@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark Theme CSS Variables */
+:root {
+  /* Primary Colors */
+  --primary-black: #0A0A0B;
+  --primary-gray: #1A1A1D;
+  --surface-dark: #26262A;
+  --surface-light: #33333A;
+
+  /* Accent Colors */
+  --electric-blue: #00D4FF;
+  --neon-green: #39FF14;
+  --cyber-purple: #9945FF;
+  --warning-orange: #FF6B35;
+  --error-red: #FF0054;
+
+  /* Text Colors */
+  --text-primary: #FFFFFF;
+  --text-secondary: #A3A3A3;
+  --text-muted: #6B6B6B;
+  --border-subtle: #333340;
+  --border-strong: #4A4A4F;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--primary-gray);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--electric-blue);
+}
+
+/* Glass Morphism Effect */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--electric-blue), var(--cyber-purple));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Neon Glow Effect */
+.neon-glow {
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+/* Hover Glow Animation */
+.hover-glow:hover {
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+  transform: translateY(-2px);
+  transition: all 0.3s ease;
+}
+
+@layer components {
+  /* Dark Theme Cards */
+  .card {
+    @apply bg-gray-800/50 backdrop-blur-xl p-6 rounded-2xl border border-gray-700 shadow-xl;
+  }
+  
+  .card-dark {
+    @apply bg-gray-900/80 backdrop-blur-xl p-6 rounded-2xl border border-gray-600 shadow-2xl;
+  }
+  
+  /* Dark Theme Buttons */
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-700/50 hover:bg-gray-600/50 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 border border-gray-600 hover:border-gray-500;
+  }
+  
+  .btn-success {
+    @apply bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg;
+  }
+  
+  .btn-danger {
+    @apply bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg;
+  }
+  
+  /* Dark Theme Inputs */
+  .input {
+    @apply w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 transition-all backdrop-blur-sm;
+  }
+  
+  .input-dark {
+    @apply w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-500 transition-all backdrop-blur-sm;
+  }
+  
+  /* Status Indicators */
+  .status-success {
+    @apply bg-green-500/20 text-green-400 border border-green-500/30;
+  }
+  
+  .status-warning {
+    @apply bg-yellow-500/20 text-yellow-400 border border-yellow-500/30;
+  }
+  
+  .status-error {
+    @apply bg-red-500/20 text-red-400 border border-red-500/30;
+  }
+  
+  .status-info {
+    @apply bg-blue-500/20 text-blue-400 border border-blue-500/30;
+  }
+  
+  /* Stat Cards */
+  .stat-card {
+    @apply bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-xl p-6 rounded-2xl border border-gray-700 hover:border-gray-600 transition-all duration-300 transform hover:scale-105;
+  }
+  
+  .stat-card-income {
+    @apply bg-gradient-to-br from-green-500/10 to-teal-500/10 border-green-500/30 hover:border-green-400/50;
+  }
+  
+  .stat-card-expense {
+    @apply bg-gradient-to-br from-red-500/10 to-pink-500/10 border-red-500/30 hover:border-red-400/50;
+  }
+  
+  .stat-card-balance {
+    @apply bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/30 hover:border-blue-400/50;
+  }
+  
+  /* Transaction Items */
+  .transaction-item {
+    @apply bg-gray-800/30 hover:bg-gray-700/50 p-4 rounded-xl border border-gray-700/50 hover:border-gray-600 transition-all duration-200 backdrop-blur-sm;
+  }
+  
+  /* Loading Animations */
+  .pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  .float {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+  
+  /* Particle Effects */
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particle-float 8s ease-in-out infinite;
+  }
+  
+  @keyframes particle-float {
+    0%, 100% { 
+      transform: translateY(0px) rotate(0deg);
+      opacity: 0.7;
+    }
+    50% { 
+      transform: translateY(-30px) rotate(180deg);
+      opacity: 1;
+    }
+  }
+}

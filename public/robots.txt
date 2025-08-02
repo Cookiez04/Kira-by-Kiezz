@@ -1,0 +1,7 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Disallow:
+
+# Allow all web crawlers
+# This is a financial management app that should be indexed
+Sitemap: https://your-domain.vercel.app/sitemap.xml
