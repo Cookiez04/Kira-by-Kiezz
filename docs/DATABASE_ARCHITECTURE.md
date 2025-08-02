@@ -1,19 +1,26 @@
 # 🗄️ DATABASE ARCHITECTURE
-## *Kira by Kiezz - Scalable Multi-User Database Design*
+## *Kira by Kiezz - Personalized Multi-User Financial Platform*
 
 ---
 
 ## 📋 **DATABASE OVERVIEW**
 
-Our PostgreSQL database is designed for **massive scale**, **real-time performance**, and **data integrity**. Every table supports multi-tenancy and is optimized for both read and write operations.
+Our PostgreSQL database is designed for **personalized user experiences**, **real-time performance**, and **data privacy**. Every table includes proper user isolation with Row Level Security (RLS) to ensure complete data separation between users.
+
+### **🎯 Key Design Principles:**
+- **User Isolation**: Every financial record is tied to a specific user
+- **Personalization**: Rich user profiles for customized experiences  
+- **Privacy First**: No cross-user data sharing
+- **Real-time**: Optimized for instant updates and insights
+- **Scalable**: Designed to handle millions of users efficiently
 
 ---
 
 ## 🔐 **CORE AUTHENTICATION TABLES**
 
-### **users** (Managed by Supabase Auth)
+### **user_profiles** (Enhanced User Personalization)
 ```sql
--- Extended user profile information
+-- Comprehensive user profile for personalized financial management
 CREATE TABLE user_profiles (
     id UUID REFERENCES auth.users(id) PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -26,16 +33,26 @@ CREATE TABLE user_profiles (
     phone_number TEXT,
     date_of_birth DATE,
     
-    -- App Preferences
+    -- App Preferences & Personalization
     preferred_currency TEXT DEFAULT 'USD',
     timezone TEXT DEFAULT 'UTC',
     theme TEXT DEFAULT 'dark' CHECK (theme IN ('light', 'dark', 'auto')),
     language TEXT DEFAULT 'en',
+    dashboard_layout JSONB DEFAULT '{"widgets": ["welcome", "stats", "insights", "transactions"]}',
     
-    -- Community Support
-    has_donated BOOLEAN DEFAULT FALSE,
-    total_donated DECIMAL(8,2) DEFAULT 0,
-    supporter_since TIMESTAMP WITH TIME ZONE,
+    -- Financial Profile & Personalization
+    annual_income DECIMAL(12,2),
+    financial_goals JSONB DEFAULT '[]', -- {type: "savings", target: 5000, deadline: "2024-12-31"}
+    risk_tolerance TEXT CHECK (risk_tolerance IN ('conservative', 'moderate', 'aggressive')),
+    spending_personality TEXT, -- "weekend_spender", "impulse_buyer", "careful_planner"
+    financial_status TEXT DEFAULT 'getting_started',
+    
+    -- User Insights & Analytics (Auto-calculated)
+    monthly_income_avg DECIMAL(10,2) DEFAULT 0,
+    monthly_expense_avg DECIMAL(10,2) DEFAULT 0,
+    savings_rate DECIMAL(5,2) DEFAULT 0, -- Percentage
+    top_spending_category TEXT,
+    spending_trend TEXT, -- "increasing", "decreasing", "stable"
     
     -- Privacy & Security
     two_factor_enabled BOOLEAN DEFAULT FALSE,
@@ -44,17 +61,42 @@ CREATE TABLE user_profiles (
     
     -- Onboarding & Engagement
     onboarding_completed BOOLEAN DEFAULT FALSE,
+    onboarding_step INTEGER DEFAULT 0,
     last_login_at TIMESTAMP WITH TIME ZONE,
     login_count INTEGER DEFAULT 0,
+    feature_tour_completed JSONB DEFAULT '{}', -- {"dashboard": true, "transactions": false}
     
-    -- Financial Profile
-    annual_income DECIMAL(12,2),
-    financial_goals JSONB DEFAULT '[]',
-    risk_tolerance TEXT CHECK (risk_tolerance IN ('conservative', 'moderate', 'aggressive')),
+    -- Personalized Notifications
+    notification_preferences JSONB DEFAULT '{
+        "budget_alerts": true,
+        "goal_reminders": true, 
+        "spending_insights": true,
+        "weekly_summary": true
+    }',
     
-    -- Metadata
+    -- Metadata & Custom Fields
     metadata JSONB DEFAULT '{}'
 );
+
+-- Enable Row Level Security for complete user isolation
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only access their own profile
+CREATE POLICY "Users can only access own profile" ON user_profiles
+    FOR ALL USING (auth.uid() = id);
+
+-- Auto-update timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_user_profiles_updated_at 
+    BEFORE UPDATE ON user_profiles 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 
 ### **user_sessions** (Advanced Session Management)
@@ -88,7 +130,159 @@ CREATE TABLE user_sessions (
 
 ## 💰 **FINANCIAL CORE TABLES**
 
-### **accounts** (Bank Accounts, Credit Cards, etc.)
+### **categories** (Personalized Transaction Categories)
+```sql
+-- User-specific transaction categories for complete personalization
+CREATE TABLE categories (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Category Details
+    name TEXT NOT NULL,
+    description TEXT,
+    color TEXT DEFAULT '#6366f1', -- Hex color for UI
+    icon TEXT DEFAULT '💰', -- Emoji or icon name
+    type TEXT CHECK (type IN ('income', 'expense', 'both')) DEFAULT 'expense',
+    
+    -- Personalization & Analytics
+    is_essential BOOLEAN DEFAULT FALSE, -- Rent, groceries vs entertainment
+    budget_limit DECIMAL(10,2), -- Monthly budget for this category
+    is_active BOOLEAN DEFAULT TRUE,
+    sort_order INTEGER DEFAULT 0,
+    
+    -- Auto-categorization (AI/ML features)
+    keywords TEXT[], -- For auto-categorizing transactions
+    merchant_patterns TEXT[], -- Merchant name patterns for auto-match
+    
+    -- Analytics (Auto-calculated)
+    total_spent_this_month DECIMAL(10,2) DEFAULT 0,
+    total_spent_last_month DECIMAL(10,2) DEFAULT 0,
+    transaction_count INTEGER DEFAULT 0,
+    avg_transaction_amount DECIMAL(10,2) DEFAULT 0,
+    
+    UNIQUE(user_id, name) -- Each user can have unique category names
+);
+
+-- Enable Row Level Security
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only access their own categories
+CREATE POLICY "Users can only access own categories" ON categories
+    FOR ALL USING (auth.uid() = user_id);
+```
+
+### **transactions** (Core Financial Records)
+```sql
+-- Personal financial transactions with enhanced metadata
+CREATE TABLE transactions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
+    category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Transaction Core Data
+    amount DECIMAL(12,2) NOT NULL CHECK (amount > 0),
+    type TEXT CHECK (type IN ('income', 'expense')) NOT NULL,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    description TEXT NOT NULL,
+    notes TEXT,
+    
+    -- Enhanced Metadata
+    merchant_name TEXT,
+    location TEXT, -- City, store location
+    payment_method TEXT, -- 'cash', 'card', 'transfer', 'check'
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurring_frequency TEXT, -- 'weekly', 'monthly', 'yearly'
+    
+    -- Auto-categorization & Learning
+    auto_categorized BOOLEAN DEFAULT FALSE,
+    confidence_score DECIMAL(3,2), -- 0.00 to 1.00 for AI categorization
+    original_description TEXT, -- Raw bank import description
+    
+    -- User Experience
+    is_planned BOOLEAN DEFAULT FALSE, -- Was this expense planned?
+    mood_after TEXT, -- 'happy', 'regret', 'satisfied' (for spending psychology)
+    tags TEXT[], -- User-defined tags for flexible organization
+    
+    -- Receipt & Documentation
+    receipt_url TEXT,
+    receipt_uploaded_at TIMESTAMP WITH TIME ZONE,
+    
+    -- Analytics & Insights
+    is_unusual BOOLEAN DEFAULT FALSE, -- Flagged as unusual spending
+    week_of_year INTEGER GENERATED ALWAYS AS (EXTRACT(week FROM date)) STORED,
+    month_of_year INTEGER GENERATED ALWAYS AS (EXTRACT(month FROM date)) STORED,
+    day_of_week INTEGER GENERATED ALWAYS AS (EXTRACT(dow FROM date)) STORED,
+    
+    -- Import & Sync
+    external_id TEXT, -- For bank import reconciliation
+    imported_from TEXT, -- 'manual', 'csv', 'bank_api', 'mobile_app'
+    is_verified BOOLEAN DEFAULT TRUE -- User confirmed this transaction
+);
+
+-- Enable Row Level Security  
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only access their own transactions
+CREATE POLICY "Users can only access own transactions" ON transactions
+    FOR ALL USING (auth.uid() = user_id);
+
+-- Indexes for performance
+CREATE INDEX idx_transactions_user_date ON transactions(user_id, date DESC);
+CREATE INDEX idx_transactions_category ON transactions(category_id);
+CREATE INDEX idx_transactions_type_amount ON transactions(type, amount);
+CREATE INDEX idx_transactions_month_year ON transactions(month_of_year, EXTRACT(year FROM date));
+```
+
+### **budgets** (Personalized Budget Management)
+```sql
+-- User-defined budgets for categories and goals
+CREATE TABLE budgets (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES user_profiles(id) ON DELETE CASCADE,
+    category_id UUID REFERENCES categories(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Budget Definition
+    name TEXT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL CHECK (amount > 0),
+    period TEXT CHECK (period IN ('weekly', 'monthly', 'quarterly', 'yearly')) DEFAULT 'monthly',
+    start_date DATE NOT NULL,
+    end_date DATE,
+    
+    -- Budget Status & Analytics
+    spent_amount DECIMAL(10,2) DEFAULT 0,
+    remaining_amount DECIMAL(10,2) GENERATED ALWAYS AS (amount - spent_amount) STORED,
+    percentage_used DECIMAL(5,2) GENERATED ALWAYS AS ((spent_amount / amount) * 100) STORED,
+    is_exceeded BOOLEAN GENERATED ALWAYS AS (spent_amount > amount) STORED,
+    
+    -- Personalization & Alerts
+    alert_threshold DECIMAL(5,2) DEFAULT 80.00, -- Alert at 80% of budget
+    alert_sent BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    auto_rollover BOOLEAN DEFAULT FALSE, -- Unused budget carries to next period
+    
+    -- Goal Tracking
+    is_goal BOOLEAN DEFAULT FALSE, -- Is this a savings goal vs spending budget?
+    target_date DATE,
+    priority_level INTEGER DEFAULT 1 CHECK (priority_level BETWEEN 1 AND 5),
+    
+    UNIQUE(user_id, category_id, period, start_date)
+);
+
+-- Enable Row Level Security
+ALTER TABLE budgets ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can only access their own budgets
+CREATE POLICY "Users can only access own budgets" ON budgets
+    FOR ALL USING (auth.uid() = user_id);
+```
+
+### **accounts** (Financial Accounts & Payment Methods)
 ```sql
 CREATE TABLE accounts (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
