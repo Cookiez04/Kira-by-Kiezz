@@ -3,7 +3,7 @@ import { useTransactions } from '../../hooks/useTransactions';
 import { useCategories } from '../../hooks/useCategories';
 
 function TransactionList() {
-  const { transactions, loading } = useTransactions();
+  const { transactions, loading, updateTransaction, deleteTransaction, refreshTransactions } = useTransactions();
   const { categories } = useCategories();
 
   const [filter, setFilter] = useState('all');
@@ -53,8 +53,6 @@ function TransactionList() {
     setIsEditing(true);
   };
 
-  const { updateTransaction, deleteTransaction } = useTransactions();
-
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     setEditTx((prev) => ({ ...prev, [name]: value }));
@@ -71,6 +69,7 @@ function TransactionList() {
       date: editTx.date,
       notes: editTx.notes?.trim() || null,
     });
+    await refreshTransactions();
     setIsEditing(false);
     setEditTx(null);
   };
@@ -79,6 +78,7 @@ function TransactionList() {
     const ok = window.confirm('Delete this transaction?');
     if (!ok) return;
     await deleteTransaction(tx.id);
+    await refreshTransactions();
   };
 
   const getCategoryIcon = (category) => {
