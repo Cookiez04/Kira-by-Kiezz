@@ -59,10 +59,11 @@ function CategoryManager() {
   };
 
   const handleDelete = async (c) => {
-    // Check if category is used in any transaction
-    const used = window.confirm('If any transactions use this category, you may want to update them first. Delete anyway?');
-    if (!used) return;
-    await deleteCategory(c.id);
+    try {
+      await deleteCategory(c.id);
+    } catch (err) {
+      alert(err.message || 'Unable to delete category. It may be used by existing transactions.');
+    }
   };
 
   return (

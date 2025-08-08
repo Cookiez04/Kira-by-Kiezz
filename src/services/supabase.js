@@ -89,18 +89,17 @@ export const supabaseOperations = {
   },
 
   async deleteCategory(id) {
-    // Prevent deleting a category that is in use
-    await supabase
+    // Prevent deleting a category that is in use by any transaction
+    const { count, error: countError } = await supabase
       .from('transactions')
       .select('id', { count: 'exact', head: true })
       .eq('category_id', id);
+    if (countError) throw countError;
+    if ((count ?? 0) > 0) {
+      throw new Error('Cannot delete category: it is used by existing transactions. Edit it instead.');
+    }
 
-    // If count is available via head: true, Supabase returns it in response.count
-    // Fallback: attempt delete and rely on FK constraints if present
-    return supabase
-      .from('categories')
-      .delete()
-      .eq('id', id);
+    return supabase.from('categories').delete().eq('id', id);
   },
 
   // Budgets
