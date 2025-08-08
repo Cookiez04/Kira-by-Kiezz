@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTransactions } from '../../hooks/useTransactions';
 import { useCategories } from '../../hooks/useCategories';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCurrency } from '../../utils/formatters';
 
 function SmartInsights() {
   const { transactions } = useTransactions();
@@ -14,31 +14,25 @@ function SmartInsights() {
     return map;
   }, {});
 
+  const generateInsights = useCallback((txns, cats) => {
+    const insights = [];
+    insights.push(...analyzeSpendingPatterns(txns, categoryMap));
+    insights.push(...detectUnusualSpending(txns, categoryMap));
+    insights.push(...findSavingsOpportunities(txns, categoryMap));
+    insights.push(...monthlyComparison(txns));
+    return insights.sort((a, b) => b.priority - a.priority);
+  }, [categoryMap]);
+
   useEffect(() => {
     if (transactions.length > 0) {
-      const generatedInsights = generateInsights(transactions, categories);
-      setInsights(generatedInsights);
+      const generated = generateInsights(transactions, categories);
+      setInsights(generated);
+    } else {
+      setInsights([]);
     }
-  }, [transactions, categories]);
+  }, [transactions, categories, generateInsights]);
 
-  // Smart analytics functions
-  function generateInsights(transactions, categories) {
-    const insights = [];
-    
-    // 1. Spending pattern analysis
-    insights.push(...analyzeSpendingPatterns(transactions, categoryMap));
-    
-    // 2. Unusual spending detection
-    insights.push(...detectUnusualSpending(transactions, categoryMap));
-    
-    // 3. Savings opportunities
-    insights.push(...findSavingsOpportunities(transactions, categoryMap));
-    
-    // 4. Monthly comparison
-    insights.push(...monthlyComparison(transactions));
-    
-    return insights.sort((a, b) => b.priority - a.priority);
-  }
+  // Smart analytics helpers
 
   function analyzeSpendingPatterns(transactions, categoryMap) {
     const insights = [];
@@ -85,7 +79,7 @@ function SmartInsights() {
     if (transactions.length < 5) return insights; // Need more data
     
     // Calculate average transaction amounts by category
-    const categoryAverages = {};
+    // const categoryAverages = {};
     const categoryTransactions = {};
     
     transactions.forEach(t => {

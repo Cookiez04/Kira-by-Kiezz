@@ -174,9 +174,9 @@ function LandingPage() {
             
             <div className="flex items-center space-x-6 text-gray-400">
               <a href="https://github.com/Cookiez04/Kira-by-Kiezz" className="hover:text-white transition-colors">GitHub</a>
-              <a href="#" className="hover:text-white transition-colors">Documentation</a>
-              <a href="#" className="hover:text-white transition-colors">Support</a>
-              <a href="#" className="hover:text-white transition-colors">💝 Donate</a>
+              <a href="https://github.com/Cookiez04/Kira-by-Kiezz#readme" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Documentation</a>
+              <a href="mailto:support@kira.app" className="hover:text-white transition-colors">Support</a>
+              <a href="https://github.com/sponsors/Cookiez04" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">💝 Donate</a>
             </div>
           </div>
           
