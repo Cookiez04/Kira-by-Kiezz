@@ -119,9 +119,11 @@ function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center space-x-2 mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-500 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-xl">K</span>
-            </div>
+            <img
+              src="/favicon/android-chrome-192x192.png"
+              alt="Kira by Kiezz"
+              className="w-12 h-12 rounded-xl"
+            />
             <span className="text-white text-2xl font-bold">Kira by Kiezz</span>
           </Link>
           <h1 className="text-3xl font-bold text-white mb-2">Join the Revolution</h1>
