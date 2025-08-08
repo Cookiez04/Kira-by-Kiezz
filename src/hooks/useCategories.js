@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabaseOperations } from '../services/supabase';
+import { useAuthUser } from './useAuthUser';
 
 export const useCategories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { userId } = useAuthUser();
 
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabaseOperations.getCategories();
+      const { data, error } = await supabaseOperations.getCategories(userId ?? undefined);
       
       if (error) {
         throw error;
@@ -26,7 +28,10 @@ export const useCategories = () => {
 
   const addCategory = async (categoryData) => {
     try {
-      const { data, error } = await supabaseOperations.addCategory(categoryData);
+      const { data, error } = await supabaseOperations.addCategory({
+        ...categoryData,
+        user_id: userId ?? undefined,
+      });
       
       if (error) {
         throw error;
@@ -57,8 +62,9 @@ export const useCategories = () => {
   };
 
   useEffect(() => {
+    if (!userId) return;
     fetchCategories();
-  }, []);
+  }, [userId]);
 
   return {
     categories,

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useCategories } from '../../hooks/useCategories';
+import { useAuthUser } from '../../hooks/useAuthUser';
 import { supabaseOperations } from '../../services/supabase';
 import { formatDateForInput } from '../../utils/formatters';
 
 function TransactionForm() {
   const { categories, loading: categoriesLoading } = useCategories();
+  const { userId } = useAuthUser();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -33,6 +35,9 @@ function TransactionForm() {
     setError('');
 
     try {
+      if (!userId) {
+        throw new Error('You must be logged in to add a transaction');
+      }
       // Validate form
       if (!formData.description.trim()) {
         throw new Error('Description is required');
@@ -52,7 +57,7 @@ function TransactionForm() {
         category_id: formData.category_id || null,
         date: formData.date,
         notes: formData.notes.trim() || null,
-        user_id: null // Will be set by RLS
+        user_id: userId
       };
 
       const { data, error } = await supabaseOperations.addTransaction(transactionData);

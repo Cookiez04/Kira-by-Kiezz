@@ -1,14 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useTransactions } from '../../hooks/useTransactions';
 
 function TransactionList() {
-  // Mock data - will be replaced with Supabase data
-  const [transactions] = useState([
-    { id: 1, description: 'Monthly Salary', amount: 2500, type: 'income', date: '2024-01-15', category: 'Salary', notes: 'January salary payment' },
-    { id: 2, description: 'Grocery Shopping', amount: -85.50, type: 'expense', date: '2024-01-14', category: 'Food', notes: 'Weekly groceries at Walmart' },
-    { id: 3, description: 'Gas Station', amount: -45.00, type: 'expense', date: '2024-01-13', category: 'Transport', notes: 'Fill up tank' },
-    { id: 4, description: 'Coffee Shop', amount: -4.50, type: 'expense', date: '2024-01-13', category: 'Food', notes: 'Morning coffee' },
-    { id: 5, description: 'Freelance Work', amount: 500, type: 'income', date: '2024-01-12', category: 'Freelance', notes: 'Website project completion' }
-  ]);
+  const { transactions, loading } = useTransactions();
 
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -32,12 +26,15 @@ function TransactionList() {
     });
   };
 
-  const filteredTransactions = transactions.filter(transaction => {
-    const matchesFilter = filter === 'all' || transaction.type === filter;
-    const matchesSearch = transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         transaction.category.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
+  const filteredTransactions = useMemo(() => {
+    return (transactions || []).filter((transaction) => {
+      const matchesFilter = filter === 'all' || transaction.type === filter;
+      const categoryName = transaction.categories?.name || transaction.category || '';
+      const matchesSearch = transaction.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        categoryName.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+  }, [transactions, filter, searchTerm]);
 
   const getCategoryIcon = (category) => {
     const icons = {
@@ -68,7 +65,7 @@ function TransactionList() {
               placeholder="Search transactions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field"
+              className="input"
             />
           </div>
           <div className="flex space-x-2">
@@ -101,7 +98,9 @@ function TransactionList() {
 
         {/* Transaction List */}
         <div className="space-y-3">
-          {filteredTransactions.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Loading transactions…</div>
+          ) : filteredTransactions.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <p>No transactions found</p>
               <p className="text-sm">Try adjusting your search or filters</p>
@@ -114,14 +113,14 @@ function TransactionList() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 flex-1">
                       <div className="text-2xl">
-                        {getCategoryIcon(transaction.category)}
+                        {getCategoryIcon(transaction.categories?.name || transaction.category)}
                       </div>
                       <div className="flex-1">
                         <div className="font-medium text-gray-800">
                           {transaction.description}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {transaction.category} • {formatDate(transaction.date)}
+                          {(transaction.categories?.name || transaction.category || 'Other')} • {formatDate(transaction.date)}
                         </div>
                         {transaction.notes && (
                           <div className="text-sm text-gray-400 mt-1">

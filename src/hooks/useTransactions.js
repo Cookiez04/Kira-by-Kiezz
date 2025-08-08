@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabaseOperations } from '../services/supabase';
+import { useAuthUser } from './useAuthUser';
 
 export const useTransactions = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { userId } = useAuthUser();
 
   const fetchTransactions = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabaseOperations.getTransactions();
+      const { data, error } = await supabaseOperations.getTransactions(userId ?? undefined);
       
       if (error) {
         throw error;
@@ -26,7 +28,10 @@ export const useTransactions = () => {
 
   const addTransaction = async (transactionData) => {
     try {
-      const { data, error } = await supabaseOperations.addTransaction(transactionData);
+      const { data, error } = await supabaseOperations.addTransaction({
+        ...transactionData,
+        user_id: userId ?? undefined,
+      });
       
       if (error) {
         throw error;
@@ -96,8 +101,9 @@ export const useTransactions = () => {
   };
 
   useEffect(() => {
+    if (!userId) return;
     fetchTransactions();
-  }, []);
+  }, [userId]);
 
   return {
     transactions,
