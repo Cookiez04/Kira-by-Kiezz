@@ -19,11 +19,12 @@ function IncomeExpenseCard({ title, amount, type, color }) {
 
   const getInsight = () => {
     if (type === 'balance') {
-      if (amount >= 0) {
+      if (amount > 0) {
         return 'You\'re saving money this month! 🎉';
-      } else {
+      } else if (amount < 0) {
         return 'You\'re spending more than earning this month';
       }
+      return '';
     }
     if (type === 'income' && amount === 0) {
       return 'Add your income sources';
@@ -41,7 +42,12 @@ function IncomeExpenseCard({ title, amount, type, color }) {
         <span className="text-xl">{getIcon(type)}</span>
       </div>
       
-      <p className="text-3xl font-bold mb-2">{formatCurrency(amount)}</p>
+      <p className="text-3xl font-bold mb-2">
+        {type === 'balance'
+          ? `${amount < 0 ? '-' : amount > 0 ? '+' : ''}${formatCurrency(Math.abs(amount))}`
+          : formatCurrency(amount)
+        }
+      </p>
       
       {getInsight() && (
         <p className="text-xs opacity-75">
