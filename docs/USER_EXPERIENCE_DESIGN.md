@@ -5,7 +5,7 @@
 
 ## 🌙 **DESIGN PHILOSOPHY: "DARK LUXURY MEETS FINANCIAL INTELLIGENCE"**
 
-We're creating the **Tesla of Financial Apps** - sleek, intelligent, and irresistibly beautiful. Users should feel like they're using technology from the future.
+Goal: a modern, minimal, and professional finance app. It should feel effortless and calm, with great contrast and clear hierarchy.
 
 ---
 

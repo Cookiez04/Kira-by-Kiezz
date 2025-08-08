@@ -133,7 +133,7 @@ Week 21-22: 🌟 Community Support
 □ Community showcase page
 □ Contributor recognition system
 □ User testimonials and stories
-□ Open-source contribution guides
+□ Improve docs for setup (no contribution guide)
 □ Community support forums
 
 Week 23-24: 📱 Mobile Optimization

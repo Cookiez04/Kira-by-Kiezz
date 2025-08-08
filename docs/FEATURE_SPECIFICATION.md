@@ -159,7 +159,7 @@ Every feature in Kira by Kiezz serves **one of three purposes**:
 #### **👨‍👩‍👧‍👦 Family Financial Management**
 - **Shared accounts** with permission levels
 - **Kid allowance** tracking and goal setting
-- **Family budget** collaboration tools
+- Individual budgeting (no collaboration tools)
 - **Spending approval** workflows for teenagers
 - **Financial education** modules for children
 - **Chore-based** earning systems

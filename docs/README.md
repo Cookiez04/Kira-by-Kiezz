@@ -91,7 +91,7 @@ Every document here represents **months of strategic thinking** compressed into 
 - Personal finance apps generate $5.57B annually
 - 73% of people want better financial tools
 - Current solutions are outdated and boring
-- **Opportunity**: Create the Tesla of finance apps
+- **Focus**: Build a modern, minimal personal finance app
 
 ### **🚀 Competitive Advantages:**
 1. **Design Leadership** - Most beautiful financial app ever built
@@ -102,9 +102,7 @@ Every document here represents **months of strategic thinking** compressed into 
 
 ### **💝 Open-Source Model:**
 - **100% Free**: All features available to everyone, forever
-- **Community Funded**: Supported by donations from users who love the mission
 - **Open Source**: Full code transparency and community contributions
-- **Target**: 100k+ users helping each other achieve financial wellness
 
 ### **🏗️ Technical Foundation:**
 - **Frontend**: Next.js + TypeScript + Tailwind (modern, fast, scalable)

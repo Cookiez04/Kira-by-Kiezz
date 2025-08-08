@@ -7,11 +7,11 @@
 
 ---
 
-## 🚀 **The Tesla of Financial Apps**
+## 🚀 **A Modern, Minimal Financial App**
 
-**Beautiful. Intelligent. Free. Forever.**
+**Beautiful. Simple. Free. Forever.**
 
-Kira by Kiezz is a **dark-futuristic financial management platform** that makes budgeting feel like using technology from the future. Built with modern React and powered by Supabase, it delivers enterprise-grade security with a stunning user experience.
+Kira by Kiezz is a **modern, minimal financial manager** built with React and Supabase. It focuses on great UX and personal data isolation with clear, privacy‑first defaults.
 
 ### 🌟 **Live Demo**
 [**Try Kira Now →**](https://kira-by-kiezz.vercel.app) *(Coming Soon)*
@@ -22,11 +22,11 @@ Kira by Kiezz is a **dark-futuristic financial management platform** that makes 
 
 ### 🎨 **Beautiful Design**
 - **Dark futuristic theme** with glass morphism effects
-- **Tesla-inspired interface** with smooth animations
+- **Clean, minimal interface** with smooth animations
 - **Mobile-first responsive** design
 - **Professional SaaS appearance**
 
-### 🔐 **Enterprise Security**
+### 🔐 **Privacy & Security**
 - **Supabase Authentication** with email verification
 - **Row Level Security** for complete data isolation
 - **OAuth providers** (Google, GitHub, Apple)
@@ -112,11 +112,10 @@ REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
 - **Smooth animations** and micro-interactions
 - **Professional grade** user experience
 
-### **🛡️ Enterprise Security**
-- **Bank-level security** with Supabase
-- **Data isolation** with Row Level Security
-- **No AI tracking** - Your data stays private
-- **Open source** - Full transparency
+### **🛡️ Privacy‑First**
+- **Row Level Security** per user
+- **No AI tracking**
+- **Open source**
 
 ### **🧠 Smart Without AI**
 - **Rule-based analytics** - No AI costs
@@ -135,43 +134,16 @@ Beautiful dark-themed marketing page with professional design.
 Secure login and registration with email verification.
 
 ### Dashboard
-Tesla-inspired financial command center with real-time data.
+Clear overview with real-time data.
 
 ### Transactions
 Smart transaction management with category auto-detection.
 
 ---
 
-## 🤝 **Contributing**
+## 🤝 **Open Source**
 
-We welcome contributions! Here's how to get started:
-
-### **Ways to Contribute**
-- 🐛 **Report bugs** - Help us find and fix issues
-- 💡 **Suggest features** - Share your ideas
-- 📝 **Improve docs** - Make documentation better
-- 💻 **Submit code** - Add features or fix bugs
-- 🎨 **Design improvements** - Enhance the UI/UX
-
-### **Development Setup**
-
-```bash
-# Fork the repository
-# Clone your fork
-git clone https://github.com/your-username/Kira-by-Kiezz.git
-
-# Create a feature branch
-git checkout -b feature/amazing-feature
-
-# Make your changes
-# Commit with clear messages
-git commit -m "feat: add amazing feature"
-
-# Push to your fork
-git push origin feature/amazing-feature
-
-# Create a Pull Request
-```
+This is a passion project by Kiezz. It’s open source so others can fork or use it—no formal collaboration, PR workflows, or contribution expectations.
 
 ---
 
@@ -184,20 +156,15 @@ If Kira helps you manage your finances better, consider supporting the project:
 - 💰 **Sponsor on GitHub** - [Support here](https://github.com/sponsors/Cookiez04)
 - 🐦 **Share on social media** - Spread the word
 - 📝 **Write a review** - Help others discover Kira
-- 🤝 **Contribute code** - Make Kira even better
 
-### **Sponsor Benefits**
-- 🎖️ **Supporter badge** in the app
-- 📋 **Priority feature requests**
-- 💬 **Direct access** to developers
-- 📊 **Early access** to new features
+If you like Kira, feel free to star the repo or drop a note at `kiezzyee@gmail.com`.
 
 ---
 
 ## 📊 **Project Stats**
 
 - 🎯 **100% Free** - No paid features
-- 🔒 **100% Secure** - Enterprise-grade security
+- 🔒 **Privacy‑first**
 - 🎨 **100% Beautiful** - Professional design
 - 📱 **100% Responsive** - Works everywhere
 - ⚡ **100% Fast** - Lightning performance
