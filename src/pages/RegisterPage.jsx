@@ -120,7 +120,7 @@ function RegisterPage() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center space-x-2 mb-4">
             <img
-              src="/favicon/android-chrome-192x192.png"
+              src="/android-chrome-192x192.png"
               alt="Kira by Kiezz"
               className="w-12 h-12 rounded-xl"
             />
