@@ -47,7 +47,7 @@ function CategoryManager() {
   return (
     <div className="space-y-6">
       <div className="card">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Manage Categories</h2>
+        <h2 className="text-2xl font-bold text-gray-100 mb-6">Manage Categories</h2>
 
         <form onSubmit={handleSubmit} className="mb-8 grid grid-cols-1 gap-4">
           <input
@@ -93,7 +93,7 @@ function CategoryManager() {
           </div>
         
           <div>
-            <p className="text-sm text-gray-400 mb-2">Choose an icon</p>
+            <p className="text-sm text-gray-300 mb-2">Choose an icon</p>
             <div className="grid grid-cols-10 gap-2 p-3 rounded-lg border border-gray-700 bg-gray-800/40">
               {emojiPalette.map((e) => (
                 <button
@@ -114,18 +114,18 @@ function CategoryManager() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {loading && <div className="text-gray-500">Loading…</div>}
+           {loading && <div className="text-gray-400">Loading…</div>}
           {!loading && categories.map((c) => (
-            <div key={c.id} className="border border-gray-200 rounded-lg p-4 flex items-center gap-3">
+            <div key={c.id} className="border border-gray-700 rounded-lg p-4 flex items-center gap-3 bg-gray-900/30">
               <div className="text-xl" style={{ color: c.color }}>{c.icon || '🏷️'}</div>
               <div className="flex-1">
-                <div className="font-medium text-gray-800">{c.name}</div>
-                <div className="text-xs text-gray-500 uppercase">{c.type}</div>
+                <div className="font-medium text-gray-200">{c.name}</div>
+                <div className="text-xs text-gray-400 uppercase">{c.type}</div>
               </div>
             </div>
           ))}
-          {!loading && categories.length === 0 && (
-            <div className="text-gray-500">No categories yet. Create your first above.</div>
+           {!loading && categories.length === 0 && (
+            <div className="text-gray-400">No categories yet. Create your first above.</div>
           )}
         </div>
       </div>

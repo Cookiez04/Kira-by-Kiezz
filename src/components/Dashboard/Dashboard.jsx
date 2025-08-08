@@ -125,13 +125,8 @@ function Dashboard() {
     return 'Friend';
   };
 
-  // Get time-based greeting
-  const getTimeGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  };
+  // Greeting
+  const getGreeting = () => 'Hello';
 
   // Get financial status emoji
   const getFinancialStatusEmoji = () => {
@@ -149,7 +144,7 @@ function Dashboard() {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="mb-6 lg:mb-0">
               <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">
-                {getTimeGreeting()}, {getUserDisplayName()}! {getFinancialStatusEmoji()}
+                {getGreeting()}, {getUserDisplayName()}! {getFinancialStatusEmoji()}
               </h1>
               <p className="text-lg text-slate-300 mb-4">
                 {transactions.length === 0 
@@ -191,9 +186,9 @@ function Dashboard() {
                 <div>
                   <p className="text-slate-400 text-sm">Net Income</p>
                   <p className={`text-2xl font-bold ${
-                    stats.balance >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                    stats.balance > 0 ? 'text-emerald-400' : stats.balance < 0 ? 'text-rose-400' : 'text-slate-300'
                   }`}>
-                    ${Math.abs(stats.balance).toLocaleString()}
+                    {stats.balance < 0 ? '-' : stats.balance > 0 ? '+' : ''}${Math.abs(stats.balance).toLocaleString()}
                   </p>
                 </div>
                 <div>

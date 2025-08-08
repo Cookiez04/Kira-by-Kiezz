@@ -53,7 +53,7 @@ function TransactionList() {
   return (
     <div className="space-y-6">
       <div className="card">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
+        <h2 className="text-2xl font-bold text-gray-100 mb-6">
           All Transactions
         </h2>
 
@@ -65,7 +65,7 @@ function TransactionList() {
               placeholder="Search transactions..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="input"
+              className="input text-gray-200 placeholder-gray-400"
             />
           </div>
           <div className="flex space-x-2">
@@ -109,21 +109,21 @@ function TransactionList() {
             filteredTransactions.map((transaction) => {
               const amount = formatAmount(transaction.amount);
               return (
-                <div key={transaction.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                <div key={transaction.id} className="border border-gray-700 rounded-lg p-4 hover:bg-gray-800/40 transition-colors bg-gray-900/30">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 flex-1">
                       <div className="text-2xl">
                         {getCategoryIcon(transaction.categories?.name || transaction.category)}
                       </div>
                       <div className="flex-1">
-                        <div className="font-medium text-gray-800">
+                        <div className="font-medium text-gray-200">
                           {transaction.description}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-400">
                           {(transaction.categories?.name || transaction.category || 'Other')} • {formatDate(transaction.date)}
                         </div>
                         {transaction.notes && (
-                          <div className="text-sm text-gray-400 mt-1">
+                          <div className="text-sm text-gray-500 mt-1">
                             {transaction.notes}
                           </div>
                         )}
@@ -131,12 +131,11 @@ function TransactionList() {
                     </div>
                     <div className="text-right">
                       <div className={`font-semibold text-lg ${
-                        amount.isNegative ? 'text-red-600' : 'text-green-600'
+                        transaction.type === 'expense' || amount.isNegative ? 'text-red-500' : 'text-green-400'
                       }`}>
-                        {amount.isNegative ? '-' : '+'}
-                        {amount.formatted}
+                        {(transaction.type === 'expense' || amount.isNegative) ? '-' : '+'}{amount.formatted}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-400">
                         {transaction.type}
                       </div>
                     </div>
