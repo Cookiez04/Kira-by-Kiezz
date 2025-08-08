@@ -108,7 +108,6 @@ Every document here represents **months of strategic thinking** compressed into 
 - **Frontend**: Next.js + TypeScript + Tailwind (modern, fast, scalable)
 - **Backend**: Supabase (PostgreSQL + Auth + Real-time + Edge functions)
 - **Infrastructure**: Vercel + Cloudflare (global, performant, reliable)
-- **Integrations**: Plaid (banking) + Stripe (payments) + OpenAI (AI)
 
 ---
 

@@ -330,40 +330,6 @@ Goal: a modern, minimal, and professional finance app. It should feel effortless
 - **Undo options** for destructive actions
 - **Contextual help** system
 
----
 
-## 💫 **COMMUNITY SUPPORT FEATURES**
-
-### **Donation & Support:**
-- **Donation button** prominently placed in settings
-- **Support Kiezz** section with donation options
-- **Supporter badges** for donors (optional)
-- **Thank you messages** from the developer
-- **Transparency reports** on how donations are used
-
-### **Open Source Community:**
-- **GitHub integration** for contributing
-- **Feature request** voting system
-- **Bug report** submission
-- **Community showcase** for contributors
-- **Developer appreciation** page
-
----
-
-## 🎯 **COMMUNITY ENGAGEMENT**
-
-### **Onboarding Experience:**
-- **Mission explanation** - why we're free and open-source
-- **Quick wins** in first session
-- **Community introduction** and how to get help
-- **Optional donation** invitation (no pressure)
-- **Progressive feature** discovery
-
-### **Community Building:**
-- **Success story** sharing
-- **Financial goal** celebrations
-- **Helper badges** for community supporters
-- **Open roadmap** voting
-- **Developer updates** and transparency
 
 This design system creates an experience that users **crave** - making financial management feel like using the most advanced technology available! 🚀

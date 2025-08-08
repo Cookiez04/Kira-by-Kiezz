@@ -142,10 +142,6 @@ function LandingPage() {
               <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">Smart</div>
               <div className="text-gray-300">Analytics</div>
             </div>
-            <div className="space-y-2">
-              <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">Bank</div>
-              <div className="text-gray-300">Level Security</div>
-            </div>
           </div>
         </div>
       </section>
