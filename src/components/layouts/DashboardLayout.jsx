@@ -122,7 +122,7 @@ function DashboardLayout({ children }) {
             <img
               alt="Kira"
               src="/favicon/android-chrome-192x192.png"
-              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/favicon.ico'; }}
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/favicon/favicon-32x32.png'; }}
               className="w-7 h-7 rounded"
             />
             <span className="text-white font-semibold">Kira</span>
