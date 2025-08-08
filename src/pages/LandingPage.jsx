@@ -8,7 +8,7 @@ function LandingPage() {
       <nav className="relative z-10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <img src="/android-chrome-192x192.png" alt="Kira by Kiezz" className="w-8 h-8 rounded-lg" />
+            <img src="/apple-touch-icon.png" alt="Kira by Kiezz" className="w-8 h-8 rounded-lg" onError={(e)=>{e.currentTarget.onerror=null;e.currentTarget.src='/favicon-32x32.png';}} />
             <span className="text-white text-xl font-bold">Kira by Kiezz</span>
           </div>
           
@@ -168,7 +168,7 @@ function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <img src="/android-chrome-192x192.png" alt="Kira by Kiezz" className="w-8 h-8 rounded-lg" />
+              <img src="/apple-touch-icon.png" alt="Kira by Kiezz" className="w-8 h-8 rounded-lg" onError={(e)=>{e.currentTarget.onerror=null;e.currentTarget.src='/favicon-32x32.png';}} />
               <span className="text-white text-xl font-bold">Kira by Kiezz</span>
             </div>
             

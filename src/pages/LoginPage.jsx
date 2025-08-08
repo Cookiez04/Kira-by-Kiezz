@@ -63,9 +63,10 @@ function LoginPage() {
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center space-x-2 mb-4">
             <img
-              src="/android-chrome-192x192.png"
+              src="/apple-touch-icon.png"
               alt="Kira by Kiezz"
               className="w-12 h-12 rounded-xl"
+              onError={(e)=>{e.currentTarget.onerror=null;e.currentTarget.src='/favicon-32x32.png';}}
             />
             <span className="text-white text-2xl font-bold">Kira by Kiezz</span>
           </Link>
