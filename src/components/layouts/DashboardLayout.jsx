@@ -44,7 +44,9 @@ function DashboardLayout({ children }) {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-700">
           <Link to="/dashboard" className="flex items-center space-x-2">
-            <img src="/apple-touch-icon.png" alt="Kira" className="w-8 h-8 rounded" onError={(e)=>{e.currentTarget.onerror=null;e.currentTarget.src='/favicon-32x32.png';}}/>
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-500 rounded flex items-center justify-center">
+              <span className="text-white font-bold">K</span>
+            </div>
             <span className="text-white text-xl font-bold">Kira</span>
           </Link>
           <button 
@@ -117,12 +119,9 @@ function DashboardLayout({ children }) {
           </button>
 
           <div className="flex items-center gap-3 ml-2">
-            <img
-              alt="Kira"
-              src="/apple-touch-icon.png"
-              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/favicon-32x32.png'; }}
-              className="w-7 h-7 rounded"
-            />
+            <div className="w-7 h-7 bg-gradient-to-r from-blue-400 to-purple-500 rounded flex items-center justify-center">
+              <span className="text-white text-sm font-bold">K</span>
+            </div>
             <span className="text-white font-semibold">Kira</span>
           </div>
 

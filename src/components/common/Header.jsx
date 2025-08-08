@@ -6,7 +6,9 @@ function Header() {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <img src="/apple-touch-icon.png" alt="Kira by Kiezz" className="w-8 h-8 rounded-lg" onError={(e)=>{e.currentTarget.onerror=null;e.currentTarget.src='/favicon-32x32.png';}} />
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">K</span>
+            </div>
             <h1 className="text-2xl font-bold text-gray-800">
               Kira by Kiezz
             </h1>
