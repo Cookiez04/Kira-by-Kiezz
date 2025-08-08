@@ -129,7 +129,7 @@ function LandingPage() {
       {/* Stats Section */}
       <section className="px-6 py-20">
         <div className="max-w-7xl mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
+          <div className="grid md:grid-cols-3 gap-8 text-center">
             <div className="space-y-2">
               <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">100%</div>
               <div className="text-gray-300">Free Forever</div>
