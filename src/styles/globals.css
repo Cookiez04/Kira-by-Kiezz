@@ -11,11 +11,11 @@
   --surface-3: #1b2230;   /* elevated */
 
   /* Brand palette (soft, not neon) */
-  --brand-500: #4f7cff;
-  --brand-600: #3e67e6;
-  --brand-700: #3354bd;
-  --accent-emerald: #22c55e;
-  --accent-rose: #ef4444;
+  --brand-500: #5b7fff;    /* softened brand */
+  --brand-600: #4868e6;
+  --brand-700: #3a54bd;
+  --accent-emerald: #2ecc71;
+  --accent-rose: #ff5c5c;
 
   /* Text and borders */
   --text-1: #e6e8ec;      /* primary */
@@ -73,14 +73,14 @@
 @layer components {
   /* Dark Theme Cards */
   .card {
-    @apply p-6 rounded-2xl border shadow-xl;
+    @apply p-6 rounded-xl border shadow;
     background: var(--surface-2);
     border-color: var(--border-1);
     color: var(--text-1);
   }
   
   .card-dark {
-    @apply p-6 rounded-2xl border shadow-2xl;
+    @apply p-6 rounded-xl border shadow;
     background: var(--surface-3);
     border-color: var(--border-2);
     color: var(--text-1);
@@ -88,13 +88,13 @@
   
   /* Dark Theme Buttons */
   .btn-primary {
-    @apply text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-lg;
+    @apply text-white px-4 py-2 rounded-md font-medium transition-colors shadow;
     background: var(--brand-600);
   }
   .btn-primary:hover { background: var(--brand-700); }
   
   .btn-secondary {
-    @apply text-white px-6 py-3 rounded-lg font-semibold transition-colors border;
+    @apply text-white px-4 py-2 rounded-md font-medium transition-colors border;
     background: var(--surface-3);
     border-color: var(--border-1);
   }
@@ -109,7 +109,7 @@
   
   /* Dark Theme Inputs */
   .input {
-    @apply w-full px-4 py-3 rounded-lg focus:ring-2 focus:border-transparent transition-colors;
+    @apply w-full px-4 py-2 rounded-md focus:ring-2 focus:border-transparent transition-colors;
     background: var(--surface-1);
     border: 1px solid var(--border-1);
     color: var(--text-1);

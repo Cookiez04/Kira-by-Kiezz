@@ -119,7 +119,12 @@ function DashboardLayout({ children }) {
           </button>
 
           <div className="flex items-center gap-3 ml-2">
-            <img alt="Kira" src="/favicon.ico" className="w-7 h-7 rounded" />
+            <img
+              alt="Kira"
+              src="/favicon/android-chrome-192x192.png"
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/favicon.ico'; }}
+              className="w-7 h-7 rounded"
+            />
             <span className="text-white font-semibold">Kira</span>
           </div>
 

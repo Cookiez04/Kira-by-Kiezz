@@ -58,14 +58,15 @@ function CategoryManager() {
             className="input"
           />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <select
-              value={form.type}
-              onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-              className="input"
-            >
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-            </select>
+            <div>
+              <span className="block text-sm text-gray-300 mb-2">Type</span>
+              <div className="inline-flex rounded-md border border-gray-700 overflow-hidden">
+                <button type="button" onClick={() => setForm(f=>({...f, type:'expense'}))}
+                  className={`px-4 py-2 text-sm ${form.type==='expense' ? 'bg-[var(--brand-600)] text-white' : 'bg-[var(--surface-1)] text-[var(--text-2)]'}`}>Expense</button>
+                <button type="button" onClick={() => setForm(f=>({...f, type:'income'}))}
+                  className={`px-4 py-2 text-sm ${form.type==='income' ? 'bg-[var(--brand-600)] text-white' : 'bg-[var(--surface-1)] text-[var(--text-2)]'}`}>Income</button>
+              </div>
+            </div>
 
             <div className="flex items-center gap-3">
               <input
@@ -73,7 +74,8 @@ function CategoryManager() {
                 value={form.color}
                 title="Color"
                 onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-                className="h-10 w-16 p-0 border border-gray-300 rounded"
+                className="h-10 w-10 p-0 border-0 rounded-full overflow-hidden cursor-pointer"
+                style={{ WebkitAppearance: 'none', padding: 0 }}
               />
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-gray-800/50 text-white">
                 <span className="text-xl" aria-label="Selected emoji">{form.icon}</span>

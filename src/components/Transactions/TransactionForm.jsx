@@ -99,138 +99,116 @@ function TransactionForm() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold text-gray-800 mb-8">
+      <h1 className="text-3xl font-bold text-white mb-6">
         Add {formData.type === 'income' ? 'Income' : 'Expense'}
       </h1>
       
       {success && (
-        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-800 font-medium">
-            ✅ Transaction added successfully!
-          </p>
+        <div className="mb-6 p-3 rounded-md border status-success">
+          <p>✅ Transaction added successfully!</p>
         </div>
       )}
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-800">{error}</p>
+        <div className="mb-6 p-3 rounded-md border status-error">
+          <p>{error}</p>
         </div>
       )}
 
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="card">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Transaction type segmented control */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Transaction Type
-            </label>
-            <select 
-              name="type"
-              value={formData.type}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="expense">💸 Expense</option>
-              <option value="income">💰 Income</option>
-            </select>
+            <span className="block text-sm text-gray-300 mb-2">Transaction Type</span>
+            <div className="inline-flex rounded-md border border-gray-700 overflow-hidden">
+              <button type="button" onClick={() => setFormData(f => ({...f, type:'expense'}))}
+                className={`px-4 py-2 text-sm ${formData.type==='expense' ? 'bg-[var(--brand-600)] text-white' : 'bg-[var(--surface-1)] text-[var(--text-2)]'}`}>
+                💸 Expense
+              </button>
+              <button type="button" onClick={() => setFormData(f => ({...f, type:'income'}))}
+                className={`px-4 py-2 text-sm ${formData.type==='income' ? 'bg-[var(--brand-600)] text-white' : 'bg-[var(--surface-1)] text-[var(--text-2)]'}`}>
+                💰 Income
+              </button>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description *
-            </label>
-            <input 
-              type="text" 
+            <label className="block text-sm text-gray-300 mb-2">Description *</label>
+            <input
+              type="text"
               name="description"
               value={formData.description}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" 
+              className="input"
               placeholder="What was this transaction for?"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Amount * ($)
-            </label>
-            <input 
-              type="number" 
+            <label className="block text-sm text-gray-300 mb-2">Amount * ($)</label>
+            <input
+              type="number"
               name="amount"
               value={formData.amount}
               onChange={handleInputChange}
-              step="0.01" 
+              step="0.01"
               min="0.01"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" 
+              className="input"
               placeholder="0.00"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Category
-            </label>
-            <select 
-              name="category_id"
-              value={formData.category_id}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-              disabled={categoriesLoading}
-            >
-              <option value="">Select a category (optional)</option>
-              {filteredCategories.map(category => (
-                <option key={category.id} value={category.id}>
-                  {category.icon} {category.name}
-                </option>
+            <label className="block text-sm text-gray-300 mb-2">Category</label>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => setFormData(f=>({...f, category_id: ''}))}
+                className={`px-3 py-1 rounded-full text-sm border ${!formData.category_id ? 'bg-[var(--brand-600)] text-white border-transparent' : 'bg-[var(--surface-1)] text-[var(--text-2)] border-[var(--border-1)]'}`}>None</button>
+              {filteredCategories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setFormData(f=>({...f, category_id: c.id}))}
+                  className={`px-3 py-1 rounded-full text-sm border ${formData.category_id===c.id ? 'bg-[var(--brand-600)] text-white border-transparent' : 'bg-[var(--surface-1)] text-[var(--text-2)] border-[var(--border-1)]'}`}
+                  title={c.name}
+                >
+                  <span className="mr-1">{c.icon}</span>{c.name}
+                </button>
               ))}
-            </select>
-            {categoriesLoading && (
-              <p className="text-sm text-gray-500 mt-1">Loading categories...</p>
-            )}
+            </div>
+            {categoriesLoading && <p className="text-sm text-gray-400 mt-1">Loading categories...</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date *
-            </label>
-            <input 
-              type="date" 
+            <label className="block text-sm text-gray-300 mb-2">Date *</label>
+            <input
+              type="date"
               name="date"
               value={formData.date}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              className="input"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes (optional)
-            </label>
-            <textarea 
+            <label className="block text-sm text-gray-300 mb-2">Notes (optional)</label>
+            <textarea
               name="notes"
               value={formData.notes}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" 
+              className="input"
               rows="3"
               placeholder="Any additional notes about this transaction..."
             />
           </div>
 
-          <div className="flex gap-4 pt-4">
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              {loading ? 'Adding...' : `Add ${formData.type === 'income' ? 'Income' : 'Expense'}`}
+          <div className="flex gap-3 pt-2">
+            <button type="submit" disabled={loading} className="btn-primary flex-1">
+              {loading ? 'Adding…' : `Add ${formData.type === 'income' ? 'Income' : 'Expense'}`}
             </button>
-            <a 
-              href="/"
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-center"
-            >
-              Cancel
-            </a>
+            <a href="/" className="btn-secondary">Cancel</a>
           </div>
         </form>
       </div>
