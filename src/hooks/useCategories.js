@@ -64,6 +64,7 @@ export const useCategories = () => {
   useEffect(() => {
     if (!userId) return;
     fetchCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   return {

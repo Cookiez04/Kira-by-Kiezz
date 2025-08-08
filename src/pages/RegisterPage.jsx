@@ -42,7 +42,7 @@ function RegisterPage() {
 
     try {
       // Register user with Supabase
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -58,6 +58,7 @@ function RegisterPage() {
         throw error;
       }
 
+      // If email confirmations are enabled, success means a confirmation email was sent
       setSuccess(true);
       
     } catch (err) {

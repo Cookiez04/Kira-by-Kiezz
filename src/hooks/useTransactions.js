@@ -103,6 +103,7 @@ export const useTransactions = () => {
   useEffect(() => {
     if (!userId) return;
     fetchTransactions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   return {

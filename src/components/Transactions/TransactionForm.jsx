@@ -60,7 +60,7 @@ function TransactionForm() {
         user_id: userId
       };
 
-      const { data, error } = await supabaseOperations.addTransaction(transactionData);
+      const { error } = await supabaseOperations.addTransaction(transactionData);
       
       if (error) {
         throw error;
