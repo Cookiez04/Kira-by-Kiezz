@@ -47,6 +47,31 @@ export const useCategories = () => {
     }
   };
 
+  const updateCategory = async (id, updates) => {
+    try {
+      const { data, error } = await supabaseOperations.updateCategory(id, updates);
+      if (error) throw error;
+      await fetchCategories();
+      return data;
+    } catch (err) {
+      setError(err.message);
+      console.error('Error updating category:', err);
+      throw err;
+    }
+  };
+
+  const deleteCategory = async (id) => {
+    try {
+      const { error } = await supabaseOperations.deleteCategory(id);
+      if (error) throw error;
+      await fetchCategories();
+    } catch (err) {
+      setError(err.message);
+      console.error('Error deleting category:', err);
+      throw err;
+    }
+  };
+
   // Get categories by type
   const getIncomeCategories = () => {
     return categories.filter(cat => cat.type === 'income');
@@ -72,6 +97,8 @@ export const useCategories = () => {
     loading,
     error,
     addCategory,
+    updateCategory,
+    deleteCategory,
     refreshCategories: fetchCategories,
     getIncomeCategories,
     getExpenseCategories,

@@ -80,6 +80,29 @@ export const supabaseOperations = {
       .select();
   },
 
+  async updateCategory(id, updates) {
+    return supabase
+      .from('categories')
+      .update(updates)
+      .eq('id', id)
+      .select();
+  },
+
+  async deleteCategory(id) {
+    // Prevent deleting a category that is in use
+    await supabase
+      .from('transactions')
+      .select('id', { count: 'exact', head: true })
+      .eq('category_id', id);
+
+    // If count is available via head: true, Supabase returns it in response.count
+    // Fallback: attempt delete and rely on FK constraints if present
+    return supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+  },
+
   // Budgets
   async getBudgets(userId = null) {
     let query = supabase

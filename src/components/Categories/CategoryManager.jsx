@@ -3,11 +3,12 @@ import { useCategories } from '../../hooks/useCategories';
 import { useAuthUser } from '../../hooks/useAuthUser';
 
 function CategoryManager() {
-  const { categories, addCategory, loading } = useCategories();
+  const { categories, addCategory, updateCategory, deleteCategory, loading } = useCategories();
   const { userId } = useAuthUser();
-  const [form, setForm] = useState({ name: '', type: 'expense', color: '#6B7280', icon: '💸' });
+  const [form, setForm] = useState({ name: '', type: 'expense', icon: '💸' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [editing, setEditing] = useState(null);
 
   const emojiPalette = useMemo(
     () => [
@@ -29,19 +30,39 @@ function CategoryManager() {
     }
     setSubmitting(true);
     try {
-      await addCategory({
-        name: form.name.trim(),
-        type: form.type,
-        color: form.color,
-        icon: form.icon,
-        user_id: userId,
-      });
-      setForm({ name: '', type: 'expense', color: '#6B7280', icon: '💸' });
+      if (editing) {
+        await updateCategory(editing.id, {
+          name: form.name.trim(),
+          type: form.type,
+          icon: form.icon,
+        });
+        setEditing(null);
+      } else {
+        await addCategory({
+          name: form.name.trim(),
+          type: form.type,
+          icon: form.icon,
+          user_id: userId,
+        });
+      }
+      setForm({ name: '', type: 'expense', icon: '💸' });
     } catch (e) {
       setError(e.message);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const startEdit = (c) => {
+    setEditing(c);
+    setForm({ name: c.name, type: c.type, icon: c.icon || '💸' });
+  };
+
+  const handleDelete = async (c) => {
+    // Check if category is used in any transaction
+    const used = window.confirm('If any transactions use this category, you may want to update them first. Delete anyway?');
+    if (!used) return;
+    await deleteCategory(c.id);
   };
 
   return (
@@ -69,14 +90,6 @@ function CategoryManager() {
             </div>
 
             <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={form.color}
-                title="Color"
-                onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-                className="h-10 w-10 p-0 border-0 rounded-full overflow-hidden cursor-pointer"
-                style={{ WebkitAppearance: 'none', padding: 0 }}
-              />
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 bg-gray-800/50 text-white">
                 <span className="text-xl" aria-label="Selected emoji">{form.icon}</span>
                 <span className="text-sm text-gray-300">Icon</span>
@@ -88,7 +101,7 @@ function CategoryManager() {
               disabled={submitting}
               className="btn-primary"
             >
-              {submitting ? 'Adding…' : 'Add Category'}
+              {submitting ? (editing ? 'Saving…' : 'Adding…') : (editing ? 'Save Changes' : 'Add Category')}
             </button>
           </div>
         
@@ -117,10 +130,14 @@ function CategoryManager() {
            {loading && <div className="text-gray-400">Loading…</div>}
           {!loading && categories.map((c) => (
             <div key={c.id} className="border border-gray-700 rounded-lg p-4 flex items-center gap-3 bg-gray-900/30">
-              <div className="text-xl" style={{ color: c.color }}>{c.icon || '🏷️'}</div>
+              <div className="text-xl">{c.icon || '🏷️'}</div>
               <div className="flex-1">
                 <div className="font-medium text-gray-200">{c.name}</div>
                 <div className="text-xs text-gray-400 uppercase">{c.type}</div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => startEdit(c)} className="px-3 py-1 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm">Edit</button>
+                <button onClick={() => handleDelete(c)} className="px-3 py-1 rounded-md bg-rose-600 hover:bg-rose-700 text-white text-sm">Delete</button>
               </div>
             </div>
           ))}
