@@ -1,10 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { supabase } from '../../services/supabase';
 
 function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('user_profiles').select('*').eq('id', user.id).single();
+      setProfile({
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        avatar_url: user.user_metadata?.avatar_url || data?.avatar_url || null,
+      });
+    };
+    load();
+  }, []);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -93,8 +107,8 @@ function DashboardLayout({ children }) {
 
       {/* Main Content */}
       <div className="lg:pl-64">
-        {/* Top Header */}
-        <header className="bg-gray-800/50 backdrop-blur-xl border-b border-gray-700 h-16 flex items-center justify-between px-6">
+        {/* Top Header - minimal, brand on left, profile on right */}
+        <header className="bg-gray-900/70 backdrop-blur-xl border-b border-gray-800 h-16 flex items-center justify-between px-6">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden text-gray-400 hover:text-white"
@@ -104,37 +118,21 @@ function DashboardLayout({ children }) {
             </svg>
           </button>
 
-          <div className="flex items-center space-x-4">
-            {/* Search */}
-            <div className="hidden md:block">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search transactions..."
-                  className="bg-gray-700/50 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-                />
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center gap-3 ml-2">
+            <img alt="Kira" src="/favicon.ico" className="w-7 h-7 rounded" />
+            <span className="text-white font-semibold">Kira</span>
+          </div>
 
-            {/* Notifications */}
-            <button className="relative p-2 text-gray-400 hover:text-white transition-colors">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM6.07 8.92A4 4 0 0 1 10 5a4 4 0 0 1 4 3.92" />
-              </svg>
-              <div className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></div>
-            </button>
-
-            {/* User Menu */}
+          <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-bold">K</span>
-              </div>
-              <span className="hidden md:block text-white text-sm">Kiezz</span>
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile?.name || 'Profile'} className="w-8 h-8 rounded-full object-cover" />
+              ) : (
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">{(profile?.name || 'U').charAt(0).toUpperCase()}</span>
+                </div>
+              )}
+              <span className="hidden md:block text-white text-sm">{profile?.name || ''}</span>
             </div>
           </div>
         </header>

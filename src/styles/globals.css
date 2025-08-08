@@ -4,25 +4,25 @@
 
 /* Dark Theme CSS Variables */
 :root {
-  /* Primary Colors */
-  --primary-black: #0A0A0B;
-  --primary-gray: #1A1A1D;
-  --surface-dark: #26262A;
-  --surface-light: #33333A;
+  /* Base surfaces (sober, AAA contrast on text) */
+  --surface-0: #0b0d12;   /* page background */
+  --surface-1: #11141b;   /* panels */
+  --surface-2: #151a22;   /* cards */
+  --surface-3: #1b2230;   /* elevated */
 
-  /* Accent Colors */
-  --electric-blue: #00D4FF;
-  --neon-green: #39FF14;
-  --cyber-purple: #9945FF;
-  --warning-orange: #FF6B35;
-  --error-red: #FF0054;
+  /* Brand palette (soft, not neon) */
+  --brand-500: #4f7cff;
+  --brand-600: #3e67e6;
+  --brand-700: #3354bd;
+  --accent-emerald: #22c55e;
+  --accent-rose: #ef4444;
 
-  /* Text Colors */
-  --text-primary: #FFFFFF;
-  --text-secondary: #A3A3A3;
-  --text-muted: #6B6B6B;
-  --border-subtle: #333340;
-  --border-strong: #4A4A4F;
+  /* Text and borders */
+  --text-1: #e6e8ec;      /* primary */
+  --text-2: #b5bac3;      /* secondary */
+  --text-3: #8892a6;      /* muted */
+  --border-1: #2a3140;
+  --border-2: #31384a;
 }
 
 /* Custom Scrollbar */
@@ -73,20 +73,30 @@
 @layer components {
   /* Dark Theme Cards */
   .card {
-    @apply bg-gray-800/50 backdrop-blur-xl p-6 rounded-2xl border border-gray-700 shadow-xl;
+    @apply p-6 rounded-2xl border shadow-xl;
+    background: var(--surface-2);
+    border-color: var(--border-1);
+    color: var(--text-1);
   }
   
   .card-dark {
-    @apply bg-gray-900/80 backdrop-blur-xl p-6 rounded-2xl border border-gray-600 shadow-2xl;
+    @apply p-6 rounded-2xl border shadow-2xl;
+    background: var(--surface-3);
+    border-color: var(--border-2);
+    color: var(--text-1);
   }
   
   /* Dark Theme Buttons */
   .btn-primary {
-    @apply bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg;
+    @apply text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-lg;
+    background: var(--brand-600);
   }
+  .btn-primary:hover { background: var(--brand-700); }
   
   .btn-secondary {
-    @apply bg-gray-700/50 hover:bg-gray-600/50 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 border border-gray-600 hover:border-gray-500;
+    @apply text-white px-6 py-3 rounded-lg font-semibold transition-colors border;
+    background: var(--surface-3);
+    border-color: var(--border-1);
   }
   
   .btn-success {
@@ -99,8 +109,12 @@
   
   /* Dark Theme Inputs */
   .input {
-    @apply w-full px-4 py-3 bg-gray-800/50 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-400 transition-all backdrop-blur-sm;
+    @apply w-full px-4 py-3 rounded-lg focus:ring-2 focus:border-transparent transition-colors;
+    background: var(--surface-1);
+    border: 1px solid var(--border-1);
+    color: var(--text-1);
   }
+  .input::placeholder { color: var(--text-3); }
   
   .input-dark {
     @apply w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-500 transition-all backdrop-blur-sm;
@@ -142,7 +156,9 @@
   
   /* Transaction Items */
   .transaction-item {
-    @apply bg-gray-800/30 hover:bg-gray-700/50 p-4 rounded-xl border border-gray-700/50 hover:border-gray-600 transition-all duration-200 backdrop-blur-sm;
+    @apply p-4 rounded-xl border transition-colors;
+    background: var(--surface-1);
+    border-color: var(--border-1);
   }
   
   /* Loading Animations */
