@@ -30,6 +30,7 @@ function DashboardLayout({ children }) {
     { name: 'Add Transaction', href: '/add-transaction', icon: '➕' },
     { name: 'Categories', href: '/categories', icon: '🏷️' },
     { name: 'Reports', href: '/reports', icon: '📈' },
+    { name: 'Settings', href: '/settings', icon: '⚙️' },
   ];
 
   const isActive = (path) => location.pathname === path;

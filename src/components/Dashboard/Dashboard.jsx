@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import IncomeExpenseCard from './IncomeExpenseCard';
 import RecentTransactions from './RecentTransactions';
 import SmartInsights from '../SmartInsights/SmartInsights';
@@ -6,6 +6,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import { useTransactions } from '../../hooks/useTransactions';
 import { useCategories } from '../../hooks/useCategories';
 import { supabase } from '../../services/supabase';
+import { getPayCycleRange } from '../../utils/payCycle';
 
 function Dashboard() {
   const { transactions, loading: transactionsLoading } = useTransactions();
@@ -19,6 +20,8 @@ function Dashboard() {
     monthlyGrowth: 0,
     topCategory: null
   });
+  const [viewMode, setViewMode] = useState('cycle'); // 'cycle' | 'calendar' | 'all'
+  const [cycleLabel, setCycleLabel] = useState('');
 
   // Get user information and profile
   useEffect(() => {
@@ -40,70 +43,79 @@ function Dashboard() {
     getUserData();
   }, []);
 
-  // Calculate enhanced statistics from transactions
-  useEffect(() => {
-    if (transactions.length > 0) {
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-      const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-      
-      // Current month transactions
-      const thisMonthTransactions = transactions.filter(t => {
-        const transactionDate = new Date(t.date);
-        return transactionDate.getMonth() === currentMonth && 
-               transactionDate.getFullYear() === currentYear;
-      });
-
-      // Last month transactions for growth calculation
-      const lastMonthTransactions = transactions.filter(t => {
-        const transactionDate = new Date(t.date);
-        return transactionDate.getMonth() === lastMonth && 
-               transactionDate.getFullYear() === lastMonthYear;
-      });
-
-      const totalIncome = thisMonthTransactions
-        .filter(t => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
-      
-      const totalExpenses = thisMonthTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      const lastMonthExpenses = lastMonthTransactions
-        .filter(t => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-
-      // Calculate monthly growth
-      const monthlyGrowth = lastMonthExpenses > 0 
-        ? ((totalExpenses - lastMonthExpenses) / lastMonthExpenses) * 100
-        : 0;
-
-      // Find top spending category
-      const categorySpending = {};
-      thisMonthTransactions
-        .filter(t => t.type === 'expense')
-        .forEach(t => {
-          const categoryName = t.categories?.name || 'Other';
-          categorySpending[categoryName] = (categorySpending[categoryName] || 0) + t.amount;
-        });
-      
-      const topCategory = Object.keys(categorySpending).length > 0
-        ? Object.keys(categorySpending).reduce((a, b) => 
-            categorySpending[a] > categorySpending[b] ? a : b)
-        : null;
-
-      setStats({
-        totalIncome,
-        totalExpenses,
-        balance: totalIncome - totalExpenses,
-        monthlyGrowth,
-        topCategory,
-        categorySpending
+  const filteredByView = useMemo(() => {
+    const now = new Date();
+    if (viewMode === 'all') {
+      setCycleLabel('All Time');
+      return transactions;
+    }
+    if (viewMode === 'calendar') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      setCycleLabel(start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+      return transactions.filter(t => {
+        const d = new Date(t.date);
+        return d >= start && d <= end;
       });
     }
-  }, [transactions]);
+    const startDay = userProfile?.pay_cycle_start_day || 1;
+    const { start, end, label } = getPayCycleRange(now, startDay);
+    setCycleLabel(label);
+    return transactions.filter(t => {
+      const d = new Date(t.date);
+      return d >= start && d <= end;
+    });
+  }, [transactions, viewMode, userProfile]);
+
+  useEffect(() => {
+    const txs = filteredByView;
+    const totalIncome = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const totalExpenses = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+    // Growth: compare same window immediately preceding
+    let monthlyGrowth = 0;
+    if (viewMode !== 'all') {
+      let prevStart, prevEnd;
+      if (viewMode === 'calendar') {
+        const now = new Date();
+        prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        prevEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      } else {
+        const startDay = userProfile?.pay_cycle_start_day || 1;
+        const now = new Date();
+        const { start } = getPayCycleRange(now, startDay);
+        const prevRef = new Date(start);
+        prevRef.setDate(prevRef.getDate() - 1);
+        const prev = getPayCycleRange(prevRef, startDay);
+        prevStart = prev.start;
+        prevEnd = prev.end;
+      }
+      const prevTxs = transactions.filter(t => {
+        const d = new Date(t.date);
+        return d >= prevStart && d <= prevEnd;
+      });
+      const prevExpenses = prevTxs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      if (prevExpenses > 0) monthlyGrowth = ((totalExpenses - prevExpenses) / prevExpenses) * 100;
+    }
+
+    const categorySpending = {};
+    txs.filter(t => t.type === 'expense').forEach(t => {
+      const categoryName = t.categories?.name || 'Other';
+      categorySpending[categoryName] = (categorySpending[categoryName] || 0) + t.amount;
+    });
+    const topCategory = Object.keys(categorySpending).length > 0
+      ? Object.keys(categorySpending).reduce((a, b) => categorySpending[a] > categorySpending[b] ? a : b)
+      : null;
+
+    setStats({
+      totalIncome,
+      totalExpenses,
+      balance: totalIncome - totalExpenses,
+      monthlyGrowth,
+      topCategory,
+      categorySpending
+    });
+  }, [filteredByView, transactions, userProfile, viewMode]);
 
   const loading = transactionsLoading || categoriesLoading;
 
@@ -146,12 +158,19 @@ function Dashboard() {
               <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">
                 {getGreeting()}, {getUserDisplayName()}! {getFinancialStatusEmoji()}
               </h1>
-              <p className="text-lg text-slate-300 mb-4">
-                {transactions.length === 0 
-                  ? "Let's set up your financial tracking"
-                  : `Here's your financial overview for ${new Date().toLocaleDateString('en-US', { month: 'long' })}`
-                }
-              </p>
+              <div className="text-lg text-slate-300 mb-4 flex items-center gap-3">
+                <span>{transactions.length === 0 ? "Let's set up your financial tracking" : 'Overview for'}</span>
+                {transactions.length > 0 && (
+                  <>
+                    <select value={viewMode} onChange={(e)=>setViewMode(e.target.value)} className="bg-slate-800/70 border border-slate-700 text-slate-200 rounded-md px-2 py-1">
+                      <option value="cycle">Pay Cycle</option>
+                      <option value="calendar">Calendar Month</option>
+                      <option value="all">All Time</option>
+                    </select>
+                    <span className="text-white/80 font-medium">{cycleLabel}</span>
+                  </>
+                )}
+              </div>
               
               {/* Financial Health Indicator */}
               {transactions.length > 0 && (

@@ -57,7 +57,7 @@ function RecentTransactions({ transactions = [], categories = [] }) {
                   isIncome ? 'bg-green-100' : 'bg-red-100'
                 }`}>
                   <span className="text-lg">
-                    {category?.icon || (isIncome ? '💰' : '💸')}
+                    {category?.icon || (isIncome ? '💰' : '🏷️')}
                   </span>
                 </div>
                 <div className="flex-1">

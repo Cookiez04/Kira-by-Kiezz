@@ -10,6 +10,7 @@ import TransactionForm from './components/Transactions/TransactionForm';
 import TransactionList from './components/Transactions/TransactionList';
 import CategoryManager from './components/Categories/CategoryManager';
 import Reports from './components/Reports/Reports';
+import SettingsPage from './pages/SettingsPage';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -57,6 +58,7 @@ function App() {
         <Route path="/transactions" element={user ? <DashboardLayout><TransactionList /></DashboardLayout> : <Navigate to="/login" />} />
         <Route path="/categories" element={user ? <DashboardLayout><CategoryManager /></DashboardLayout> : <Navigate to="/login" />} />
         <Route path="/reports" element={user ? <DashboardLayout><Reports /></DashboardLayout> : <Navigate to="/login" />} />
+        <Route path="/settings" element={user ? <DashboardLayout><SettingsPage /></DashboardLayout> : <Navigate to="/login" />} />
         
         {/* Redirect any unknown routes */}
         <Route path="*" element={<Navigate to="/" />} />

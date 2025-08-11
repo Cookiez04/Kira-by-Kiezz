@@ -81,7 +81,9 @@ function TransactionList() {
     await refreshTransactions();
   };
 
-  const getCategoryIcon = (category) => {
+  const getCategoryIcon = (categoryName, categoryObj) => {
+    // Prefer emoji stored on the category record
+    if (categoryObj?.icon) return categoryObj.icon;
     const icons = {
       'Salary': '💼',
       'Freelance': '💻',
@@ -90,9 +92,10 @@ function TransactionList() {
       'Shopping': '🛍️',
       'Bills': '📄',
       'Entertainment': '🎮',
-      'Health': '🏥'
+      'Health': '🏥',
+      'Other': '🏷️'
     };
-    return icons[category] || '💰';
+    return icons[categoryName] || '🏷️';
   };
 
   return (
@@ -158,7 +161,7 @@ function TransactionList() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3 flex-1">
                       <div className="text-2xl">
-                        {getCategoryIcon(transaction.categories?.name || transaction.category)}
+                        {getCategoryIcon(transaction.categories?.name || transaction.category, transaction.categories)}
                       </div>
                       <div className="flex-1">
                         <div className="font-medium text-gray-200">
