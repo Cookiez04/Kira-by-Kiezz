@@ -15,7 +15,7 @@ function SettingsPage() {
       setProfile({
         id: user.id,
         display_name: user.user_metadata?.full_name || '',
-        preferred_currency: data?.preferred_currency || 'USD',
+        preferred_currency: data?.currency || 'USD',
         theme: data?.theme || 'dark',
         avatar_url: data?.avatar_url || '',
         pay_cycle_start_day: data?.pay_cycle_start_day || 1,
@@ -30,7 +30,7 @@ function SettingsPage() {
     setMessage('');
     try {
       await supabase.from('user_profiles').update({
-        preferred_currency: profile.preferred_currency,
+        currency: profile.preferred_currency,
         theme: profile.theme,
         avatar_url: profile.avatar_url || null,
         pay_cycle_start_day: Math.min(31, Math.max(1, Number(profile.pay_cycle_start_day) || 1)),
