@@ -218,7 +218,7 @@ function Dashboard() {
           {/* Quick Stats Preview - Mobile optimized */}
           {transactions.length > 0 && (
             <div className="grid grid-cols-2 gap-4 sm:gap-6">
-              <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4">
+              <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-white/10 shadow-lg">
                 <p className="text-slate-400 text-xs sm:text-sm mb-1">Net Income</p>
                 <p className={`text-lg sm:text-xl lg:text-2xl font-bold ${
                   stats.balance > 0 ? 'text-emerald-400' : stats.balance < 0 ? 'text-rose-400' : 'text-slate-300'
@@ -226,7 +226,7 @@ function Dashboard() {
                   {stats.balance < 0 ? '-' : stats.balance > 0 ? '+' : ''}${Math.abs(stats.balance).toLocaleString()}
                 </p>
               </div>
-              <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4">
+              <div className="bg-slate-900/60 backdrop-blur-sm rounded-lg p-3 sm:p-4 border border-white/10 shadow-lg">
                 <p className="text-slate-400 text-xs sm:text-sm mb-1">Top Category</p>
                 <p className="text-white font-semibold text-sm sm:text-base truncate">
                   {stats.topCategory || 'N/A'}
