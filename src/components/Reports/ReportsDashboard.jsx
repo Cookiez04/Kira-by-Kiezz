@@ -100,8 +100,14 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
   // Enhanced time-based data preparation
   const timeBasedData = useMemo(() => {
     const data = [];
-    const startDate = new Date(dateRange.start);
-    const endDate = new Date(dateRange.end);
+    
+    // Find the earliest transaction date and use today as end date
+    const transactionDates = transactions.map(t => new Date(t.date)).sort((a, b) => a - b);
+    const earliestDate = transactionDates.length > 0 ? transactionDates[0] : new Date();
+    const today = new Date();
+    
+    const startDate = new Date(Math.max(earliestDate.getTime(), new Date(dateRange.start).getTime()));
+    const endDate = new Date(Math.min(today.getTime(), new Date(dateRange.end).getTime()));
     
     if (timeGranularity === 'daily') {
       for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
@@ -186,10 +192,10 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
 
   // Enhanced financial health calculation
   const financialHealthMetrics = useMemo(() => {
-    const debtToIncomeRatio = metrics.income > 0 ? Math.abs(metrics.expenses) / metrics.income : 1;
-    const emergencyFundRatio = metrics.netIncome > 0 ? (metrics.netIncome * 3) / Math.abs(metrics.expenses) : 0;
+    const debtToIncomeRatio = metrics.income > 0 ? metrics.expenses / metrics.income : 1;
+    const emergencyFundRatio = metrics.netIncome > 0 ? (metrics.netIncome * 3) / metrics.expenses : 0;
     const spendingConsistency = transactions.length > 7 ? 
-      1 - (Math.abs(metrics.avgDailySpending - (Math.abs(metrics.expenses) / 30)) / metrics.avgDailySpending) : 0.5;
+      1 - (Math.abs(metrics.avgDailySpending - (metrics.expenses / 30)) / metrics.avgDailySpending) : 0.5;
     
     const baseScore = (
       metrics.savingsRate * 0.3 + 
@@ -465,7 +471,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
                       backgroundColor: '#1e293b',
                       border: '1px solid #334155',
                       borderRadius: '8px',
-                      color: '#f1f5f9'
+                      color: '#ffffff'
                     }}
                   />
                 </PieChart>
