@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
 import {
   AreaChart,
@@ -14,10 +14,15 @@ import {
   BarChart,
   Bar,
   LineChart,
-  Line
+  Line,
+  Legend,
+  ComposedChart
 } from 'recharts';
 
-function ReportsDashboard({ transactions, categories, dateRange }) {
+function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'detailed', onExport }) {
+  const [selectedMetric, setSelectedMetric] = useState('overview');
+  const [chartType, setChartType] = useState('area'); // 'area', 'bar', 'composed'
+  const [timeGranularity, setTimeGranularity] = useState('daily'); // 'daily', 'weekly', 'monthly'
   // Calculate key financial metrics
   const metrics = useMemo(() => {
     const income = transactions
@@ -78,56 +83,120 @@ function ReportsDashboard({ transactions, categories, dateRange }) {
       .slice(0, 8); // Top 8 categories
   }, [transactions, categories]);
 
+  // Enhanced time-based data preparation
+  const timeBasedData = useMemo(() => {
+    const data = [];
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(dateRange.end);
+    
+    if (timeGranularity === 'daily') {
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        const dayTransactions = transactions.filter(t => t.date === dateStr);
+        const daySpending = dayTransactions
+          .filter(t => t.amount < 0)
+          .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+        const dayIncome = dayTransactions
+          .filter(t => t.amount > 0)
+          .reduce((sum, t) => sum + t.amount, 0);
+        
+        data.push({
+          date: dateStr,
+          spending: daySpending,
+          income: dayIncome,
+          net: dayIncome - daySpending,
+          transactions: dayTransactions.length,
+          formattedDate: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        });
+      }
+    } else if (timeGranularity === 'weekly') {
+      const weekMap = new Map();
+      transactions.forEach(t => {
+        const date = new Date(t.date);
+        const weekStart = new Date(date.setDate(date.getDate() - date.getDay()));
+        const weekKey = weekStart.toISOString().split('T')[0];
+        
+        if (!weekMap.has(weekKey)) {
+          weekMap.set(weekKey, { spending: 0, income: 0, transactions: 0, date: weekKey });
+        }
+        
+        const week = weekMap.get(weekKey);
+        if (t.amount < 0) {
+          week.spending += Math.abs(t.amount);
+        } else {
+          week.income += t.amount;
+        }
+        week.transactions++;
+      });
+      
+      weekMap.forEach(week => {
+        data.push({
+          ...week,
+          net: week.income - week.spending,
+          formattedDate: new Date(week.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        });
+      });
+    } else if (timeGranularity === 'monthly') {
+      const monthMap = new Map();
+      transactions.forEach(t => {
+        const date = new Date(t.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!monthMap.has(monthKey)) {
+          monthMap.set(monthKey, { spending: 0, income: 0, transactions: 0, date: monthKey });
+        }
+        
+        const month = monthMap.get(monthKey);
+        if (t.amount < 0) {
+          month.spending += Math.abs(t.amount);
+        } else {
+          month.income += t.amount;
+        }
+        month.transactions++;
+      });
+      
+      monthMap.forEach(month => {
+        data.push({
+          ...month,
+          net: month.income - month.spending,
+          formattedDate: new Date(month.date + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        });
+      });
+    }
+    
+    return data.sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [transactions, dateRange, timeGranularity]);
+
   // Prepare daily spending trend data
-  const dailyTrendData = useMemo(() => {
-    const dailyTotals = {};
+  const dailyTrendData = timeBasedData;
+
+  // Enhanced financial health calculation
+  const financialHealthMetrics = useMemo(() => {
+    const debtToIncomeRatio = metrics.income > 0 ? Math.abs(metrics.expenses) / metrics.income : 1;
+    const emergencyFundRatio = metrics.netIncome > 0 ? (metrics.netIncome * 3) / Math.abs(metrics.expenses) : 0;
+    const spendingConsistency = transactions.length > 7 ? 
+      1 - (Math.abs(metrics.avgDailySpending - (Math.abs(metrics.expenses) / 30)) / metrics.avgDailySpending) : 0.5;
     
-    transactions.forEach(transaction => {
-      const date = new Date(transaction.date).toISOString().split('T')[0];
-      
-      if (!dailyTotals[date]) {
-        dailyTotals[date] = {
-          date,
-          income: 0,
-          expenses: 0,
-          net: 0
-        };
-      }
-      
-      if (transaction.amount > 0) {
-        dailyTotals[date].income += transaction.amount;
-      } else {
-        dailyTotals[date].expenses += Math.abs(transaction.amount);
-      }
-      
-      dailyTotals[date].net = dailyTotals[date].income - dailyTotals[date].expenses;
-    });
+    const baseScore = (
+      metrics.savingsRate * 0.3 + 
+      (1 - Math.min(1, debtToIncomeRatio)) * 0.25 +
+      Math.min(1, emergencyFundRatio) * 0.25 +
+      spendingConsistency * 0.2
+    );
     
-    return Object.values(dailyTotals)
-      .sort((a, b) => new Date(a.date) - new Date(b.date))
-      .slice(-30); // Last 30 days
-  }, [transactions]);
+    const score = Math.min(100, Math.max(0, baseScore));
+    
+    return {
+      score,
+      debtToIncomeRatio,
+      emergencyFundRatio,
+      spendingConsistency,
+      grade: score >= 80 ? 'A' : score >= 60 ? 'B' : score >= 40 ? 'C' : 'D'
+    };
+  }, [metrics, transactions]);
 
   // Financial health score calculation
-  const healthScore = useMemo(() => {
-    let score = 50; // Base score
-    
-    // Positive net income adds points
-    if (metrics.netIncome > 0) score += 20;
-    
-    // Good savings rate adds points
-    if (metrics.savingsRate > 20) score += 15;
-    else if (metrics.savingsRate > 10) score += 10;
-    else if (metrics.savingsRate > 0) score += 5;
-    
-    // Consistent transaction patterns
-    if (metrics.avgTransactionsPerDay > 0.5 && metrics.avgTransactionsPerDay < 5) score += 10;
-    
-    // Reasonable daily spending
-    if (metrics.avgDailySpending < metrics.income / 30) score += 5;
-    
-    return Math.min(100, Math.max(0, score));
-  }, [metrics]);
+  const healthScore = financialHealthMetrics.score;
 
   const getHealthColor = (score) => {
     if (score >= 80) return 'text-emerald-400';
@@ -142,8 +211,138 @@ function ReportsDashboard({ transactions, categories, dateRange }) {
     return 'Needs Attention';
   };
 
+  // Render chart based on selected type
+  const renderChart = () => {
+    const commonProps = {
+      data: timeBasedData,
+      margin: { top: 5, right: 30, left: 20, bottom: 5 }
+    };
+    
+    switch (chartType) {
+      case 'bar':
+        return (
+          <BarChart {...commonProps}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="formattedDate" stroke="#9CA3AF" fontSize={12} />
+            <YAxis stroke="#9CA3AF" fontSize={12} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#1F2937',
+                border: '1px solid #374151',
+                borderRadius: '8px',
+                color: '#F3F4F6'
+              }}
+            />
+            <Bar dataKey="spending" fill="#EF4444" name="Spending" />
+            <Bar dataKey="income" fill="#10B981" name="Income" />
+          </BarChart>
+        );
+      case 'composed':
+        return (
+          <ComposedChart {...commonProps}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="formattedDate" stroke="#9CA3AF" fontSize={12} />
+            <YAxis stroke="#9CA3AF" fontSize={12} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#1F2937',
+                border: '1px solid #374151',
+                borderRadius: '8px',
+                color: '#F3F4F6'
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="spending"
+              fill="#EF4444"
+              stroke="#EF4444"
+              fillOpacity={0.3}
+              name="Spending"
+            />
+            <Bar dataKey="income" fill="#10B981" name="Income" />
+            <Line type="monotone" dataKey="net" stroke="#3B82F6" strokeWidth={2} name="Net" />
+          </ComposedChart>
+        );
+      default:
+        return (
+          <AreaChart {...commonProps}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+            <XAxis dataKey="formattedDate" stroke="#9CA3AF" fontSize={12} />
+            <YAxis stroke="#9CA3AF" fontSize={12} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#1F2937',
+                border: '1px solid #374151',
+                borderRadius: '8px',
+                color: '#F3F4F6'
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="spending"
+              stackId="1"
+              stroke="#EF4444"
+              fill="#EF4444"
+              fillOpacity={0.6}
+              name="Spending"
+            />
+            <Area
+              type="monotone"
+              dataKey="income"
+              stackId="2"
+              stroke="#10B981"
+              fill="#10B981"
+              fillOpacity={0.6}
+              name="Income"
+            />
+          </AreaChart>
+        );
+    }
+  };
+
   return (
     <div className="space-y-8">
+      {/* Controls */}
+      {viewMode === 'detailed' && (
+        <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm text-slate-400">Chart Type:</label>
+              <select
+                value={chartType}
+                onChange={(e) => setChartType(e.target.value)}
+                className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1 text-sm text-white"
+              >
+                <option value="area">Area Chart</option>
+                <option value="bar">Bar Chart</option>
+                <option value="composed">Composed Chart</option>
+              </select>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <label className="text-sm text-slate-400">Time Period:</label>
+              <select
+                value={timeGranularity}
+                onChange={(e) => setTimeGranularity(e.target.value)}
+                className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1 text-sm text-white"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            
+            {onExport && (
+              <button
+                onClick={() => onExport('csv')}
+                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+              >
+                📊 Export Data
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Financial Health Score */}
@@ -153,10 +352,16 @@ function ReportsDashboard({ transactions, categories, dateRange }) {
             <span className="text-2xl">💚</span>
           </div>
           <div className={`text-3xl font-bold ${getHealthColor(healthScore)} mb-2`}>
-            {healthScore}/100
+            {healthScore.toFixed(0)}/100
           </div>
-          <div className="text-sm text-slate-400">
-            {getHealthLabel(healthScore)}
+          <div className={`text-sm flex items-center space-x-1 ${
+            healthScore >= 80 ? 'text-emerald-300' :
+            healthScore >= 60 ? 'text-yellow-300' :
+            'text-red-300'
+          }`}>
+            <span>Grade {financialHealthMetrics.grade}</span>
+            <span className="text-xs">•</span>
+            <span>{getHealthLabel(healthScore)}</span>
           </div>
           <div className="mt-4 bg-slate-800 rounded-full h-2">
             <div 
@@ -277,64 +482,32 @@ function ReportsDashboard({ transactions, categories, dateRange }) {
           </div>
         </div>
 
-        {/* Daily Spending Trend */}
+        {/* Financial Trend */}
         <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
-          <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
-            <span className="mr-3">📊</span>
-            Daily Spending Trend (30 days)
-          </h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-semibold text-white flex items-center">
+              <span className="mr-3">📊</span>
+              {timeGranularity.charAt(0).toUpperCase() + timeGranularity.slice(1)} Financial Trend
+            </h3>
+            {viewMode === 'detailed' && (
+              <div className="text-xs text-slate-400">
+                {timeBasedData.length} {timeGranularity} periods
+              </div>
+            )}
+          </div>
           
-          {dailyTrendData.length > 0 ? (
+          {timeBasedData.length > 0 ? (
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailyTrendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  />
-                  <YAxis 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickFormatter={(value) => formatCurrency(value, true)}
-                  />
-                  <Tooltip
-                    formatter={(value, name) => [
-                      formatCurrency(value),
-                      name === 'expenses' ? 'Expenses' : name === 'income' ? 'Income' : 'Net'
-                    ]}
-                    labelFormatter={(date) => new Date(date).toLocaleDateString()}
-                    contentStyle={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#f1f5f9'
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="expenses"
-                    stackId="1"
-                    stroke="#ef4444"
-                    fill="#ef4444"
-                    fillOpacity={0.3}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="income"
-                    stackId="2"
-                    stroke="#10b981"
-                    fill="#10b981"
-                    fillOpacity={0.3}
-                  />
-                </AreaChart>
+                {renderChart()}
               </ResponsiveContainer>
             </div>
           ) : (
             <div className="h-80 flex items-center justify-center text-slate-400">
-              No transaction data available
+              <div className="text-center">
+                <div className="text-4xl mb-2">📈</div>
+                <div>No transaction data available</div>
+              </div>
             </div>
           )}
         </div>

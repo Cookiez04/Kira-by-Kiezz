@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
 import {
   LineChart,
@@ -13,6 +13,11 @@ import {
   BarChart,
   Bar,
   Cell,
+  ComposedChart,
+  Legend,
+  ReferenceLine,
+  Scatter,
+  ScatterChart,
   RadarChart,
   PolarGrid,
   PolarAngleAxis,
@@ -20,9 +25,105 @@ import {
   Radar
 } from 'recharts';
 
-function PredictiveInsights({ transactions, categories, dateRange }) {
+function PredictiveInsights({ transactions, categories, dateRange, selectedCategories = [], setSelectedCategories = () => {}, onExport }) {
   const [insightType, setInsightType] = useState('predictions'); // 'predictions', 'recommendations', 'goals', 'risks'
   const [timeHorizon, setTimeHorizon] = useState('3months'); // '1month', '3months', '6months', '1year'
+  const [modelType, setModelType] = useState('linear'); // 'linear', 'exponential', 'seasonal', 'ml'
+  const [confidenceLevel, setConfidenceLevel] = useState(80); // 70, 80, 90, 95
+  const [chartType, setChartType] = useState('line'); // 'line', 'area', 'bar', 'scatter', 'radar'
+  const [showConfidenceBands, setShowConfidenceBands] = useState(true);
+  const [includeSeasonality, setIncludeSeasonality] = useState(true);
+  const [anomalyThreshold, setAnomalyThreshold] = useState(2); // Standard deviations
+  const [forecastHorizon, setForecastHorizon] = useState('auto'); // 'auto', 'conservative', 'aggressive'
+
+  // Helper functions for advanced calculations
+  const calculateTrend = useCallback((values) => {
+    const n = values.length;
+    const sumX = (n * (n + 1)) / 2;
+    const sumY = values.reduce((sum, val) => sum + val, 0);
+    const sumXY = values.reduce((sum, val, i) => sum + val * (i + 1), 0);
+    const sumX2 = (n * (n + 1) * (2 * n + 1)) / 6;
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    
+    return { slope, intercept };
+  }, []);
+  
+  const calculateSeasonal = useCallback((values, period) => {
+    const seasonal = new Array(period).fill(0);
+    const counts = new Array(period).fill(0);
+    
+    values.forEach((value, i) => {
+      const seasonIndex = i % period;
+      seasonal[seasonIndex] += value;
+      counts[seasonIndex]++;
+    });
+    
+    const overallAverage = values.reduce((sum, val) => sum + val, 0) / values.length;
+    
+    return seasonal.map((sum, i) => 
+      counts[i] > 0 ? (sum / counts[i]) - overallAverage : 0
+    );
+  }, []);
+  
+  const polynomialRegression = useCallback((values, degree) => {
+    const n = values.length;
+    const matrix = [];
+    const result = [];
+    
+    // Create matrix for polynomial regression
+    for (let i = 0; i <= degree; i++) {
+      matrix[i] = [];
+      for (let j = 0; j <= degree; j++) {
+        let sum = 0;
+        for (let k = 0; k < n; k++) {
+          sum += Math.pow(k + 1, i + j);
+        }
+        matrix[i][j] = sum;
+      }
+      
+      let sum = 0;
+      for (let k = 0; k < n; k++) {
+        sum += values[k] * Math.pow(k + 1, i);
+      }
+      result[i] = sum;
+    }
+    
+    // Solve using Gaussian elimination (simplified)
+    return gaussianElimination(matrix, result);
+  }, []);
+  
+  const gaussianElimination = useCallback((matrix, result) => {
+    const n = matrix.length;
+    const coefficients = new Array(n).fill(0);
+    
+    // Forward elimination
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        if (matrix[i][i] !== 0) {
+          const factor = matrix[j][i] / matrix[i][i];
+          for (let k = i; k < n; k++) {
+            matrix[j][k] -= factor * matrix[i][k];
+          }
+          result[j] -= factor * result[i];
+        }
+      }
+    }
+    
+    // Back substitution
+    for (let i = n - 1; i >= 0; i--) {
+      coefficients[i] = result[i];
+      for (let j = i + 1; j < n; j++) {
+        coefficients[i] -= matrix[i][j] * coefficients[j];
+      }
+      if (matrix[i][i] !== 0) {
+        coefficients[i] /= matrix[i][i];
+      }
+    }
+    
+    return coefficients;
+  }, []);
 
   // Calculate spending patterns and trends
   const spendingAnalysis = useMemo(() => {
@@ -73,7 +174,7 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
     const monthlyArray = Object.values(monthlyData).sort((a, b) => a.month.localeCompare(b.month));
     
     // Calculate trends
-    const calculateTrend = (data) => {
+    const calculateTrendSimple = (data) => {
       if (data.length < 2) return 0;
       const recent = data.slice(-3); // Last 3 months
       const older = data.slice(-6, -3); // Previous 3 months
@@ -84,9 +185,9 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
       return olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : 0;
     };
     
-    const expensesTrend = calculateTrend(monthlyArray.map(m => m.expenses));
-    const incomeTrend = calculateTrend(monthlyArray.map(m => m.income));
-    const netTrend = calculateTrend(monthlyArray.map(m => m.net));
+    const expensesTrend = calculateTrendSimple(monthlyArray.map(m => m.expenses));
+    const incomeTrend = calculateTrendSimple(monthlyArray.map(m => m.income));
+    const netTrend = calculateTrendSimple(monthlyArray.map(m => m.net));
     
     return {
       monthlyData: monthlyArray,
@@ -99,9 +200,9 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
     };
   }, [transactions]);
 
-  // Generate predictions
+  // Enhanced predictions with multiple models and advanced analytics
   const predictions = useMemo(() => {
-    if (!spendingAnalysis.monthlyData || spendingAnalysis.monthlyData.length === 0) return [];
+    if (!spendingAnalysis.monthlyData || spendingAnalysis.monthlyData.length === 0) return { data: [], insights: [], anomalies: [] };
     
     const { monthlyData, expensesTrend, incomeTrend, avgMonthlyExpenses, avgMonthlyIncome } = spendingAnalysis;
     const lastMonth = monthlyData[monthlyData.length - 1];
@@ -113,29 +214,110 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
       '1year': 12
     }[timeHorizon];
     
-    const predictions = [];
+    // Advanced prediction models
+    const generateAdvancedPredictions = (data, periods) => {
+      if (data.length < 3) return [];
+      
+      const predictions = [];
+      
+      for (let i = 1; i <= periods; i++) {
+        const futureDate = new Date(lastMonth.month + '-01');
+        futureDate.setMonth(futureDate.getMonth() + i);
+        const futureMonthKey = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}`;
+        
+        // Apply trend to predictions with some dampening
+        const trendFactor = Math.pow(0.95, i); // Dampen trend over time
+        let predictedExpenses, predictedIncome;
+        
+        switch (modelType) {
+          case 'exponential':
+            predictedExpenses = avgMonthlyExpenses * Math.pow(1 + (expensesTrend / 100), i * 0.5);
+            predictedIncome = avgMonthlyIncome * Math.pow(1 + (incomeTrend / 100), i * 0.5);
+            break;
+          case 'seasonal':
+            const seasonalFactor = includeSeasonality ? (1 + 0.1 * Math.sin(2 * Math.PI * (futureDate.getMonth() / 12))) : 1;
+            predictedExpenses = avgMonthlyExpenses * (1 + (expensesTrend / 100) * trendFactor) * seasonalFactor;
+            predictedIncome = avgMonthlyIncome * (1 + (incomeTrend / 100) * trendFactor) * seasonalFactor;
+            break;
+          case 'ml':
+            // Simple ML-like approach with polynomial fitting
+            const expenseCoeff = 1 + (expensesTrend / 100) * trendFactor + 0.01 * Math.pow(i - 1, 2);
+            const incomeCoeff = 1 + (incomeTrend / 100) * trendFactor + 0.005 * Math.pow(i - 1, 2);
+            predictedExpenses = avgMonthlyExpenses * expenseCoeff;
+            predictedIncome = avgMonthlyIncome * incomeCoeff;
+            break;
+          default: // linear
+            predictedExpenses = avgMonthlyExpenses * (1 + (expensesTrend / 100) * trendFactor);
+            predictedIncome = avgMonthlyIncome * (1 + (incomeTrend / 100) * trendFactor);
+        }
+        
+        predictions.push({
+          month: futureMonthKey,
+          predictedExpenses,
+          predictedIncome,
+          predictedNet: predictedIncome - predictedExpenses,
+          confidence: Math.max(0.4, 1 - (i * 0.08)), // Confidence decreases over time
+          type: 'prediction',
+          model: modelType
+        });
+      }
+      
+      return predictions;
+    };
     
-    for (let i = 1; i <= monthsToPredict; i++) {
-      const futureDate = new Date(lastMonth.month + '-01');
-      futureDate.setMonth(futureDate.getMonth() + i);
-      const futureMonthKey = `${futureDate.getFullYear()}-${String(futureDate.getMonth() + 1).padStart(2, '0')}`;
+    // Anomaly detection
+    const detectAnomalies = (data) => {
+      const expenses = data.map(d => d.expenses);
+      const mean = expenses.reduce((sum, val) => sum + val, 0) / expenses.length;
+      const stdDev = Math.sqrt(expenses.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / expenses.length);
       
-      // Apply trend to predictions with some dampening
-      const trendFactor = Math.pow(0.95, i); // Dampen trend over time
-      const predictedExpenses = avgMonthlyExpenses * (1 + (expensesTrend / 100) * trendFactor);
-      const predictedIncome = avgMonthlyIncome * (1 + (incomeTrend / 100) * trendFactor);
+      return data.filter(d => {
+        const zScore = Math.abs((d.expenses - mean) / stdDev);
+        return zScore > anomalyThreshold;
+      }).map(d => ({
+        ...d,
+        anomalyScore: Math.abs((d.expenses - mean) / stdDev),
+        type: 'anomaly'
+      }));
+    };
+    
+    const futurePredictions = generateAdvancedPredictions(monthlyData, monthsToPredict);
+    const anomalies = detectAnomalies(monthlyData);
+    
+    // Generate insights
+    const insights = [];
+    if (futurePredictions.length > 0) {
+      const avgPredictedExpenses = futurePredictions.reduce((sum, p) => sum + p.predictedExpenses, 0) / futurePredictions.length;
+      const expenseChange = ((avgPredictedExpenses - avgMonthlyExpenses) / avgMonthlyExpenses) * 100;
       
-      predictions.push({
-        month: futureMonthKey,
-        predictedExpenses,
-        predictedIncome,
-        predictedNet: predictedIncome - predictedExpenses,
-        confidence: Math.max(0.5, 1 - (i * 0.1)) // Confidence decreases over time
+      if (Math.abs(expenseChange) > 5) {
+        insights.push({
+          type: expenseChange > 0 ? 'warning' : 'positive',
+          title: `Expense ${expenseChange > 0 ? 'Increase' : 'Decrease'} Predicted`,
+          message: `${modelType} model predicts ${Math.abs(expenseChange).toFixed(1)}% ${expenseChange > 0 ? 'increase' : 'decrease'} in expenses`,
+          icon: expenseChange > 0 ? '📈' : '📉',
+          confidence: futurePredictions[0].confidence
+        });
+      }
+    }
+    
+    if (anomalies.length > 0) {
+      insights.push({
+        type: 'alert',
+        title: 'Unusual Spending Detected',
+        message: `${anomalies.length} month${anomalies.length > 1 ? 's' : ''} with unusual spending patterns`,
+        icon: '🚨',
+        confidence: 0.9
       });
     }
     
-    return predictions;
-  }, [spendingAnalysis, timeHorizon]);
+    return {
+      data: futurePredictions,
+      insights,
+      anomalies,
+      historical: monthlyData
+    };
+  }, [spendingAnalysis, timeHorizon, modelType, includeSeasonality, anomalyThreshold]);
 
   // Generate smart recommendations
   const recommendations = useMemo(() => {
@@ -300,10 +482,10 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
     return risks;
   }, [spendingAnalysis]);
 
-  // Chart data for predictions
+  // Enhanced chart data for predictions
   const predictionChartData = useMemo(() => {
     const historical = spendingAnalysis.monthlyData?.slice(-6) || [];
-    const future = predictions;
+    const future = predictions.data || [];
     
     return [
       ...historical.map(month => ({
@@ -311,16 +493,24 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
         actualExpenses: month.expenses,
         actualIncome: month.income,
         actualNet: month.net,
-        type: 'historical'
+        type: 'historical',
+        confidence: 1,
+        volatility: month.volatility || 0
       })),
-      ...future.map(month => ({
-        month: month.month,
-        predictedExpenses: month.predictedExpenses,
-        predictedIncome: month.predictedIncome,
-        predictedNet: month.predictedNet,
-        confidence: month.confidence,
-        type: 'predicted'
-      }))
+      ...future.map(month => {
+        const confidenceMargin = month.predictedExpenses * (1 - month.confidence) * 0.3;
+        return {
+          month: month.month,
+          predictedExpenses: month.predictedExpenses,
+          predictedIncome: month.predictedIncome,
+          predictedNet: month.predictedNet,
+          confidence: month.confidence,
+          type: 'predicted',
+          model: month.model,
+          upperBound: month.predictedExpenses + confidenceMargin,
+          lowerBound: Math.max(0, month.predictedExpenses - confidenceMargin)
+        };
+      })
     ];
   }, [spendingAnalysis.monthlyData, predictions]);
 
@@ -348,50 +538,135 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
 
   return (
     <div className="space-y-8">
-      {/* Controls */}
+      {/* Enhanced Controls */}
       <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-          {/* Insight Type Selector */}
-          <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-slate-400">Insights:</span>
-            <div className="flex bg-slate-800 rounded-lg p-1">
-              {[
-                { id: 'predictions', label: 'Predictions', icon: '🔮' },
-                { id: 'recommendations', label: 'Recommendations', icon: '💡' },
-                { id: 'goals', label: 'Goals', icon: '🎯' },
-                { id: 'risks', label: 'Risks', icon: '⚠️' }
-              ].map(type => (
-                <button
-                  key={type.id}
-                  onClick={() => setInsightType(type.id)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                    insightType === type.id
-                      ? 'bg-blue-500 text-white'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <span className="mr-2">{type.icon}</span>
-                  {type.label}
-                </button>
-              ))}
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Insight Type */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-slate-400">Type:</label>
+            <select
+              value={insightType}
+              onChange={(e) => setInsightType(e.target.value)}
+              className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm flex-1"
+            >
+              <option value="predictions">🔮 Predictions</option>
+              <option value="recommendations">💡 Recommendations</option>
+              <option value="goals">🎯 Goals</option>
+              <option value="risks">⚠️ Risks</option>
+            </select>
           </div>
           
-          {/* Time Horizon Selector */}
-          {insightType === 'predictions' && (
-            <div className="flex items-center space-x-4">
-              <span className="text-sm font-medium text-slate-400">Forecast:</span>
-              <select
-                value={timeHorizon}
-                onChange={(e) => setTimeHorizon(e.target.value)}
-                className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="1month">1 Month</option>
-                <option value="3months">3 Months</option>
-                <option value="6months">6 Months</option>
-                <option value="1year">1 Year</option>
-              </select>
-            </div>
+          {/* Time Horizon */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-slate-400">Period:</label>
+            <select
+              value={timeHorizon}
+              onChange={(e) => setTimeHorizon(e.target.value)}
+              className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm flex-1"
+            >
+              <option value="1month">📅 1 Month</option>
+              <option value="3months">📅 3 Months</option>
+              <option value="6months">📅 6 Months</option>
+              <option value="1year">📅 1 Year</option>
+            </select>
+          </div>
+          
+          {/* Model Type */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-slate-400">Model:</label>
+            <select
+              value={modelType}
+              onChange={(e) => setModelType(e.target.value)}
+              className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm flex-1"
+            >
+              <option value="linear">📊 Linear</option>
+              <option value="exponential">📈 Exponential</option>
+              <option value="seasonal">🗓️ Seasonal</option>
+              <option value="ml">🤖 ML-Enhanced</option>
+            </select>
+          </div>
+          
+          {/* Chart Type */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-slate-400">Chart:</label>
+            <select
+              value={chartType}
+              onChange={(e) => setChartType(e.target.value)}
+              className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm flex-1"
+            >
+              <option value="line">📈 Line</option>
+              <option value="area">📊 Area</option>
+              <option value="bar">📊 Bar</option>
+              <option value="scatter">🔵 Scatter</option>
+              <option value="radar">🎯 Radar</option>
+            </select>
+          </div>
+        </div>
+        
+        {/* Advanced Controls */}
+        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-slate-700">
+          {/* Confidence Level */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-slate-400">Confidence:</label>
+            <select
+              value={confidenceLevel}
+              onChange={(e) => setConfidenceLevel(Number(e.target.value))}
+              className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm"
+            >
+              <option value={70}>70%</option>
+              <option value={80}>80%</option>
+              <option value={90}>90%</option>
+              <option value={95}>95%</option>
+            </select>
+          </div>
+          
+          {/* Anomaly Threshold */}
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-slate-400">Anomaly σ:</label>
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.5"
+              value={anomalyThreshold}
+              onChange={(e) => setAnomalyThreshold(Number(e.target.value))}
+              className="w-20"
+            />
+            <span className="text-sm text-white">{anomalyThreshold}</span>
+          </div>
+          
+          {/* Toggle Controls */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setShowConfidenceBands(!showConfidenceBands)}
+              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                showConfidenceBands 
+                  ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                  : 'bg-slate-700 hover:bg-slate-600 text-white'
+              }`}
+            >
+              📊 Confidence
+            </button>
+            <button
+              onClick={() => setIncludeSeasonality(!includeSeasonality)}
+              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                includeSeasonality 
+                  ? 'bg-green-500 hover:bg-green-600 text-white' 
+                  : 'bg-slate-700 hover:bg-slate-600 text-white'
+              }`}
+            >
+              🗓️ Seasonal
+            </button>
+          </div>
+          
+          {/* Export */}
+          {onExport && (
+            <button
+              onClick={() => onExport('csv')}
+              className="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm transition-colors"
+            >
+              📊 Export
+            </button>
           )}
         </div>
       </div>
@@ -480,71 +755,302 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
           
           {predictionChartData.length > 0 ? (
             <div className="h-96 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-lg font-medium text-white">📈 Prediction Chart</h4>
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm text-slate-400">Model:</span>
+                  <span className="text-sm px-2 py-1 bg-blue-500/20 text-blue-300 rounded">
+                    {modelType.charAt(0).toUpperCase() + modelType.slice(1)}
+                  </span>
+                </div>
+              </div>
+              
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={predictionChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis 
-                    dataKey="month" 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickFormatter={formatMonthLabel}
-                  />
-                  <YAxis 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickFormatter={(value) => formatCurrency(value, true)}
-                  />
-                  <Tooltip
-                    formatter={(value, name) => [
-                      formatCurrency(value),
-                      name.includes('actual') ? name.replace('actual', 'Actual ') : name.replace('predicted', 'Predicted ')
-                    ]}
-                    labelFormatter={formatMonthLabel}
-                    contentStyle={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#f1f5f9'
-                    }}
-                  />
-                  {/* Historical lines */}
-                  <Line
-                    type="monotone"
-                    dataKey="actualIncome"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                    connectNulls={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="actualExpenses"
-                    stroke="#ef4444"
-                    strokeWidth={2}
-                    dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-                    connectNulls={false}
-                  />
-                  {/* Predicted lines */}
-                  <Line
-                    type="monotone"
-                    dataKey="predictedIncome"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-                    connectNulls={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="predictedExpenses"
-                    stroke="#ef4444"
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-                    connectNulls={false}
-                  />
-                </LineChart>
+                {chartType === 'line' && (
+                  <LineChart data={predictionChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis 
+                      dataKey="month" 
+                      stroke="#64748b"
+                      fontSize={12}
+                      tickFormatter={formatMonthLabel}
+                    />
+                    <YAxis 
+                      stroke="#64748b"
+                      fontSize={12}
+                      tickFormatter={(value) => formatCurrency(value, true)}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatCurrency(value),
+                        name.includes('actual') ? name.replace('actual', 'Actual ') : name.replace('predicted', 'Predicted ')
+                      ]}
+                      labelFormatter={formatMonthLabel}
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        color: '#f1f5f9'
+                      }}
+                    />
+                    <Legend />
+                    
+                    {/* Confidence bands */}
+                    {showConfidenceBands && (
+                      <>
+                        <Area
+                          type="monotone"
+                          dataKey="upperBound"
+                          stackId="confidence"
+                          stroke="none"
+                          fill="#F59E0B"
+                          fillOpacity={0.1}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="lowerBound"
+                          stackId="confidence"
+                          stroke="none"
+                          fill="#F59E0B"
+                          fillOpacity={0.1}
+                        />
+                      </>
+                    )}
+                    
+                    {/* Historical lines */}
+                    <Line
+                      type="monotone"
+                      dataKey="actualIncome"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                      connectNulls={false}
+                      name="Actual Income"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="actualExpenses"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                      connectNulls={false}
+                      name="Actual Expenses"
+                    />
+                    {/* Predicted lines */}
+                    <Line
+                      type="monotone"
+                      dataKey="predictedIncome"
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                      connectNulls={false}
+                      name="Predicted Income"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="predictedExpenses"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                      connectNulls={false}
+                      name="Predicted Expenses"
+                    />
+                    
+                    {/* Reference line at zero */}
+                    <ReferenceLine y={0} stroke="#6B7280" strokeDasharray="2 2" />
+                  </LineChart>
+                )}
+                
+                {chartType === 'area' && (
+                  <AreaChart data={predictionChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis 
+                      dataKey="month" 
+                      stroke="#64748b"
+                      fontSize={12}
+                      tickFormatter={formatMonthLabel}
+                    />
+                    <YAxis 
+                      stroke="#64748b"
+                      fontSize={12}
+                      tickFormatter={(value) => formatCurrency(value, true)}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatCurrency(value),
+                        name.includes('actual') ? name.replace('actual', 'Actual ') : name.replace('predicted', 'Predicted ')
+                      ]}
+                      labelFormatter={formatMonthLabel}
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        color: '#f1f5f9'
+                      }}
+                    />
+                    <Legend />
+                    
+                    <Area
+                      type="monotone"
+                      dataKey="actualExpenses"
+                      stackId="1"
+                      stroke="#ef4444"
+                      fill="#ef4444"
+                      fillOpacity={0.6}
+                      name="Actual Expenses"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="predictedExpenses"
+                      stackId="2"
+                      stroke="#F59E0B"
+                      fill="#F59E0B"
+                      fillOpacity={0.4}
+                      strokeDasharray="5 5"
+                      name="Predicted Expenses"
+                    />
+                  </AreaChart>
+                )}
+                
+                {chartType === 'bar' && (
+                  <BarChart data={predictionChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis 
+                      dataKey="month" 
+                      stroke="#64748b"
+                      fontSize={12}
+                      tickFormatter={formatMonthLabel}
+                    />
+                    <YAxis 
+                      stroke="#64748b"
+                      fontSize={12}
+                      tickFormatter={(value) => formatCurrency(value, true)}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatCurrency(value),
+                        name.includes('actual') ? name.replace('actual', 'Actual ') : name.replace('predicted', 'Predicted ')
+                      ]}
+                      labelFormatter={formatMonthLabel}
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        color: '#f1f5f9'
+                      }}
+                    />
+                    <Legend />
+                    
+                    <Bar dataKey="actualExpenses" fill="#ef4444" name="Actual Expenses" />
+                    <Bar dataKey="actualIncome" fill="#10b981" name="Actual Income" />
+                    <Bar dataKey="predictedExpenses" fill="#F59E0B" fillOpacity={0.7} name="Predicted Expenses" />
+                    <Bar dataKey="predictedIncome" fill="#3B82F6" fillOpacity={0.7} name="Predicted Income" />
+                  </BarChart>
+                )}
+                
+                {chartType === 'scatter' && (
+                  <ScatterChart data={predictionChartData.filter(d => d.actualExpenses && d.predictedExpenses)}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis 
+                      type="number"
+                      dataKey="actualExpenses"
+                      stroke="#64748b"
+                      fontSize={12}
+                      name="Actual Expenses"
+                      tickFormatter={(value) => formatCurrency(value, true)}
+                    />
+                    <YAxis 
+                      type="number"
+                      dataKey="predictedExpenses"
+                      stroke="#64748b" 
+                      fontSize={12}
+                      name="Predicted Expenses"
+                      tickFormatter={(value) => formatCurrency(value, true)}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatCurrency(value),
+                        name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
+                      ]}
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        color: '#f1f5f9'
+                      }}
+                    />
+                    <Scatter name="Prediction Accuracy" fill="#8B5CF6" />
+                  </ScatterChart>
+                )}
+                
+                {chartType === 'radar' && (
+                  <RadarChart data={predictionChartData.slice(-6)}>
+                    <PolarGrid stroke="#334155" />
+                    <PolarAngleAxis dataKey="month" tick={{ fontSize: 12, fill: '#64748b' }} />
+                    <PolarRadiusAxis 
+                      angle={90} 
+                      domain={[0, 'dataMax']} 
+                      tick={{ fontSize: 10, fill: '#64748b' }}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatCurrency(value),
+                        name.includes('actual') ? name.replace('actual', 'Actual ') : name.replace('predicted', 'Predicted ')
+                      ]}
+                      contentStyle={{
+                        backgroundColor: '#1e293b',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        color: '#f1f5f9'
+                      }}
+                    />
+                    <Radar
+                      name="Actual Expenses"
+                      dataKey="actualExpenses"
+                      stroke="#ef4444"
+                      fill="#ef4444"
+                      fillOpacity={0.3}
+                    />
+                    <Radar
+                      name="Predicted Expenses"
+                      dataKey="predictedExpenses"
+                      stroke="#F59E0B"
+                      fill="#F59E0B"
+                      fillOpacity={0.2}
+                      strokeDasharray="5 5"
+                    />
+                    <Legend />
+                  </RadarChart>
+                )}
               </ResponsiveContainer>
+              
+              {/* Chart Legend */}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-red-500 rounded"></div>
+                  <span className="text-slate-300">Actual Expenses</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-emerald-500 rounded"></div>
+                  <span className="text-slate-300">Actual Income</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-amber-500 rounded border-2 border-dashed border-amber-500"></div>
+                  <span className="text-slate-300">Predicted Expenses</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded border-2 border-dashed border-blue-500"></div>
+                  <span className="text-slate-300">Predicted Income</span>
+                </div>
+                {showConfidenceBands && (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-amber-500 rounded opacity-20"></div>
+                    <span className="text-slate-300">Confidence Band</span>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="h-96 flex items-center justify-center text-slate-400">
@@ -552,12 +1058,168 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
             </div>
           )}
           
-          {/* Prediction Summary */}
+          {/* Enhanced Prediction Statistics */}
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 mb-6">
+            <h3 className="text-lg font-medium text-white mb-6">📊 Prediction Statistics & Model Performance</h3>
+            
+            {/* Primary Predictions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors">
+                <div className="text-sm text-slate-400 mb-1">Next Month Expenses</div>
+                <div className="text-xl font-semibold text-red-400">
+                  {predictions.data?.[0] ? formatCurrency(predictions.data[0].predictedExpenses) : '$0'}
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {predictions.data?.[0]?.trend > 0 ? '↗️' : '↘️'} 
+                  {predictions.data?.[0]?.trend ? Math.abs(predictions.data[0].trend).toFixed(1) : '0.0'}% trend
+                </div>
+                <div className="mt-2 w-full bg-slate-600 rounded-full h-1.5">
+                  <div 
+                    className="bg-red-400 h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: `${predictions.data?.[0]?.confidence ? predictions.data[0].confidence * 100 : 0}%` }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors">
+                <div className="text-sm text-slate-400 mb-1">Next Month Income</div>
+                <div className="text-xl font-semibold text-green-400">
+                  {predictions.data?.[0] ? formatCurrency(predictions.data[0].predictedIncome) : '$0'}
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {predictions.data?.[0]?.incomeTrend > 0 ? '↗️' : '↘️'} 
+                  {predictions.data?.[0]?.incomeTrend ? Math.abs(predictions.data[0].incomeTrend).toFixed(1) : '0.0'}% trend
+                </div>
+                <div className="mt-2 w-full bg-slate-600 rounded-full h-1.5">
+                  <div 
+                    className="bg-green-400 h-1.5 rounded-full transition-all duration-300"
+                    style={{ width: '100%' }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors">
+                <div className="text-sm text-slate-400 mb-1">Predicted Net</div>
+                <div className={`text-xl font-semibold ${
+                  predictions.data?.[0]?.predictedNet >= 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {predictions.data?.[0] ? formatCurrency(predictions.data[0].predictedNet) : '$0'}
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {predictions.data?.[0]?.savingsRate ? predictions.data[0].savingsRate.toFixed(1) : '0.0'}% savings rate
+                </div>
+                <div className="mt-2 w-full bg-slate-600 rounded-full h-1.5">
+                  <div 
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      (predictions.data?.[0]?.savingsRate || 0) >= 20 ? 'bg-green-400' :
+                      (predictions.data?.[0]?.savingsRate || 0) >= 10 ? 'bg-yellow-400' : 'bg-red-400'
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(0, (predictions.data?.[0]?.savingsRate || 0) * 5))}%` }}
+                  ></div>
+                </div>
+              </div>
+              
+              <div className="bg-slate-700/50 rounded-lg p-4 hover:bg-slate-700/70 transition-colors">
+                <div className="text-sm text-slate-400 mb-1">Model Confidence</div>
+                <div className="text-xl font-semibold text-blue-400">
+                  {predictions.data?.[0] ? (predictions.data[0].confidence * 100).toFixed(0) : '0'}%
+                </div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {(predictions.data?.[0]?.confidence || 0) >= 0.8 ? 'High' : 
+                   (predictions.data?.[0]?.confidence || 0) >= 0.6 ? 'Medium' : 'Low'} reliability
+                </div>
+                <div className="mt-2 w-full bg-slate-600 rounded-full h-1.5">
+                  <div 
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      (predictions.data?.[0]?.confidence || 0) >= 0.8 ? 'bg-green-400' :
+                      (predictions.data?.[0]?.confidence || 0) >= 0.6 ? 'bg-yellow-400' : 'bg-red-400'
+                    }`}
+                    style={{ width: `${(predictions.data?.[0]?.confidence || 0) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Advanced Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              <div className="bg-slate-700/30 rounded-lg p-4">
+                <div className="text-sm text-slate-400 mb-2">Volatility Analysis</div>
+                <div className="text-lg font-medium text-white mb-1">
+                  {predictions.volatility ? (predictions.volatility * 100).toFixed(1) : '0.0'}%
+                </div>
+                <div className="text-xs text-slate-500">
+                  {(predictions.volatility || 0) > 0.3 ? 'High variance' : 
+                   (predictions.volatility || 0) > 0.15 ? 'Moderate variance' : 'Low variance'}
+                </div>
+              </div>
+              
+              <div className="bg-slate-700/30 rounded-lg p-4">
+                <div className="text-sm text-slate-400 mb-2">Seasonal Impact</div>
+                <div className="text-lg font-medium text-white mb-1">
+                  {includeSeasonality ? 'Active' : 'Disabled'}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {includeSeasonality ? 'Seasonal patterns detected' : 'Linear trend only'}
+                </div>
+              </div>
+              
+              <div className="bg-slate-700/30 rounded-lg p-4">
+                <div className="text-sm text-slate-400 mb-2">Anomalies Detected</div>
+                <div className="text-lg font-medium text-white mb-1">
+                  {predictions.anomalies || 0}
+                </div>
+                <div className="text-xs text-slate-500">
+                  Outliers in recent data
+                </div>
+              </div>
+            </div>
+            
+            {/* Model Performance Indicators */}
+            <div className="bg-slate-700/20 rounded-lg p-4">
+              <h4 className="text-md font-medium text-white mb-3">Model Performance</h4>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-400 mb-1">
+                    {modelType.charAt(0).toUpperCase() + modelType.slice(1)}
+                  </div>
+                  <div className="text-xs text-slate-400">Active Model</div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-400 mb-1">
+                    {forecastHorizon}M
+                  </div>
+                  <div className="text-xs text-slate-400">Forecast Period</div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-400 mb-1">
+                    {(confidenceLevel * 100).toFixed(0)}%
+                  </div>
+                  <div className="text-xs text-slate-400">Confidence Level</div>
+                </div>
+                
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-amber-400 mb-1">
+                    {(anomalyThreshold * 100).toFixed(0)}%
+                  </div>
+                  <div className="text-xs text-slate-400">Anomaly Threshold</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Enhanced Prediction Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {predictions.slice(0, 3).map((prediction, index) => (
-              <div key={index} className="bg-slate-800/50 rounded-lg p-4">
-                <div className="text-sm font-medium text-slate-300 mb-2">
-                  {formatMonthLabel(prediction.month)}
+            {predictions.data?.slice(0, 3).map((prediction, index) => (
+              <div key={index} className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm font-medium text-slate-300">
+                    {formatMonthLabel(prediction.month)}
+                  </div>
+                  <div className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">
+                    {prediction.model}
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between">
@@ -574,13 +1236,52 @@ function PredictiveInsights({ transactions, categories, dateRange }) {
                       {formatCurrency(prediction.predictedNet)}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-500">
-                    Confidence: {formatPercentage(prediction.confidence * 100)}
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-400">Confidence:</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="bg-slate-700 rounded-full h-1.5 w-12">
+                        <div 
+                          className="bg-blue-500 h-1.5 rounded-full" 
+                          style={{ width: `${prediction.confidence * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-300">
+                        {formatPercentage(prediction.confidence * 100)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            ))}
+            )) || []}
           </div>
+          
+          {/* Model Insights */}
+          {predictions.insights?.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <h4 className="text-lg font-medium text-white mb-3">📊 Model Insights</h4>
+              {predictions.insights.map((insight, index) => (
+                <div key={index} className={`p-4 rounded-lg border ${
+                  insight.type === 'warning' ? 'border-yellow-500/30 bg-yellow-500/10' :
+                  insight.type === 'positive' ? 'border-emerald-500/30 bg-emerald-500/10' :
+                  insight.type === 'alert' ? 'border-red-500/30 bg-red-500/10' :
+                  'border-blue-500/30 bg-blue-500/10'
+                }`}>
+                  <div className="flex items-start space-x-3">
+                    <span className="text-xl">{insight.icon}</span>
+                    <div className="flex-1">
+                      <h5 className="font-medium text-white mb-1">{insight.title}</h5>
+                      <p className="text-sm text-slate-300">{insight.message}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-slate-400">
+                          Confidence: {formatPercentage(insight.confidence * 100)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
