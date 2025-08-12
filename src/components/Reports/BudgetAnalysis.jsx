@@ -61,10 +61,10 @@ function BudgetAnalysis({ transactions, categories, dateRange, selectedCategorie
     
     // Calculate actual spending by category
     filteredTransactions
-      .filter(t => t.amount < 0)
+      .filter(t => t.type === 'expense')
       .forEach(transaction => {
         const categoryId = transaction.category_id;
-        const amount = Math.abs(transaction.amount);
+        const amount = parseFloat(transaction.amount);
         
         if (!categorySpending.has(categoryId)) {
           categorySpending.set(categoryId, 0);

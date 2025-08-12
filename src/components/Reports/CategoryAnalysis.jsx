@@ -53,7 +53,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
     
     // Filter by expense/income type
     if (showOnlyExpenses) {
-      filteredTransactions = filteredTransactions.filter(t => t.amount < 0);
+      filteredTransactions = filteredTransactions.filter(t => t.type === 'expense');
     }
     
     // Initialize all categories
@@ -83,8 +83,8 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
       
       if (!category) return;
       
-      const amount = Math.abs(transaction.amount);
-      const isIncome = transaction.amount > 0;
+      const amount = parseFloat(transaction.amount);
+      const isIncome = transaction.type === 'income';
       const date = new Date(transaction.date);
       const month = date.toISOString().slice(0, 7); // YYYY-MM
       const week = `${date.getFullYear()}-W${Math.ceil(date.getDate() / 7)}`;

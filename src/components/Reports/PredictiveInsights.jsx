@@ -137,8 +137,8 @@ function PredictiveInsights({ transactions, categories, dateRange, selectedCateg
       const date = new Date(transaction.date);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       const categoryId = transaction.category_id;
-      const amount = Math.abs(transaction.amount);
-      const isIncome = transaction.amount > 0;
+      const amount = parseFloat(transaction.amount);
+      const isIncome = transaction.type === 'income';
       
       // Monthly totals
       if (!monthlyData[monthKey]) {
@@ -159,7 +159,7 @@ function PredictiveInsights({ transactions, categories, dateRange, selectedCateg
       }
       monthlyData[monthKey].net = monthlyData[monthKey].income - monthlyData[monthKey].expenses;
       
-      // Category trends
+      // Category trends (only for expenses)
       if (!isIncome) {
         if (!categoryTrends[categoryId]) {
           categoryTrends[categoryId] = {};
@@ -379,12 +379,12 @@ function PredictiveInsights({ transactions, categories, dateRange, selectedCateg
     
     // Category-specific recommendations
     const categorySpending = {};
-    transactions.filter(t => t.amount < 0).forEach(t => {
+    transactions.filter(t => t.type === 'expense').forEach(t => {
       const categoryId = t.category_id;
       if (!categorySpending[categoryId]) {
         categorySpending[categoryId] = 0;
       }
-      categorySpending[categoryId] += Math.abs(t.amount);
+      categorySpending[categoryId] += parseFloat(t.amount);
     });
     
     const totalExpenses = Object.values(categorySpending).reduce((sum, amount) => sum + amount, 0);

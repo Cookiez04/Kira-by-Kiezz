@@ -26,12 +26,12 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
   // Calculate key financial metrics
   const metrics = useMemo(() => {
     const income = transactions
-      .filter(t => t.amount > 0)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + parseFloat(t.amount), 0);
     
     const expenses = transactions
-      .filter(t => t.amount < 0)
-      .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + parseFloat(t.amount), 0);
     
     const netIncome = income - expenses;
     const savingsRate = income > 0 ? (netIncome / income) * 100 : 0;
@@ -59,7 +59,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
     const categoryTotals = {};
     
     transactions
-      .filter(t => t.amount < 0)
+      .filter(t => t.type === 'expense')
       .forEach(transaction => {
         const category = categories.find(c => c.id === transaction.category_id);
         const categoryName = category?.name || 'Uncategorized';
@@ -74,7 +74,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
           };
         }
         
-        categoryTotals[categoryName].value += Math.abs(transaction.amount);
+        categoryTotals[categoryName].value += parseFloat(transaction.amount);
         categoryTotals[categoryName].count += 1;
       });
     
