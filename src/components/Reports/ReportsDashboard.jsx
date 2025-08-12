@@ -19,6 +19,14 @@ import {
   ComposedChart
 } from 'recharts';
 
+// Color palette for categories - vibrant and distinct colors
+const COLOR_PALETTE = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+  '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2', '#A3E4D7',
+  '#FCF3CF', '#FADBD8', '#D5DBDB', '#AED6F1', '#A9DFBF', '#F9E79F', '#D2B4DE', '#AED6F1',
+  '#ABEBC6', '#F7DC6F', '#D7BDE2', '#85C1E9', '#F8C471', '#82E0AA', '#F1948A', '#D5DBDB'
+];
+
 function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'detailed', onExport }) {
   const [selectedMetric, setSelectedMetric] = useState('overview');
   const [chartType, setChartType] = useState('area'); // 'area', 'bar', 'composed'
@@ -63,13 +71,12 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
       .forEach(transaction => {
         const category = categories.find(c => c.id === transaction.category_id);
         const categoryName = category?.name || 'Uncategorized';
-        const categoryColor = category?.color || '#64748b';
         
         if (!categoryTotals[categoryName]) {
           categoryTotals[categoryName] = {
             name: categoryName,
             value: 0,
-            color: categoryColor,
+            color: '', // Will be assigned below
             count: 0
           };
         }
@@ -78,9 +85,16 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
         categoryTotals[categoryName].count += 1;
       });
     
-    return Object.values(categoryTotals)
+    // Assign colors to categories
+    const sortedCategories = Object.values(categoryTotals)
       .sort((a, b) => b.value - a.value)
       .slice(0, 8); // Top 8 categories
+    
+    sortedCategories.forEach((category, index) => {
+      category.color = COLOR_PALETTE[index % COLOR_PALETTE.length];
+    });
+    
+    return sortedCategories;
   }, [transactions, categories]);
 
   // Enhanced time-based data preparation
@@ -94,11 +108,11 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
         const dateStr = d.toISOString().split('T')[0];
         const dayTransactions = transactions.filter(t => t.date === dateStr);
         const daySpending = dayTransactions
-          .filter(t => t.amount < 0)
-          .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+          .filter(t => t.type === 'expense')
+          .reduce((sum, t) => sum + parseFloat(t.amount), 0);
         const dayIncome = dayTransactions
-          .filter(t => t.amount > 0)
-          .reduce((sum, t) => sum + t.amount, 0);
+          .filter(t => t.type === 'income')
+          .reduce((sum, t) => sum + parseFloat(t.amount), 0);
         
         data.push({
           date: dateStr,
@@ -121,10 +135,10 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
         }
         
         const week = weekMap.get(weekKey);
-        if (t.amount < 0) {
-          week.spending += Math.abs(t.amount);
-        } else {
-          week.income += t.amount;
+        if (t.type === 'expense') {
+          week.spending += parseFloat(t.amount);
+        } else if (t.type === 'income') {
+          week.income += parseFloat(t.amount);
         }
         week.transactions++;
       });
@@ -147,10 +161,10 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
         }
         
         const month = monthMap.get(monthKey);
-        if (t.amount < 0) {
-          month.spending += Math.abs(t.amount);
-        } else {
-          month.income += t.amount;
+        if (t.type === 'expense') {
+          month.spending += parseFloat(t.amount);
+        } else if (t.type === 'income') {
+          month.income += parseFloat(t.amount);
         }
         month.transactions++;
       });
