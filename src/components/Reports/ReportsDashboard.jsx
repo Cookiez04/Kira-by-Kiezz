@@ -43,6 +43,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
     
     const netIncome = income - expenses;
     const savingsRate = income > 0 ? (netIncome / income) * 100 : 0;
+    const savingsRateDecimal = income > 0 ? (netIncome / income) : 0;
     
     // Calculate average daily spending
     const days = Math.max(1, Math.ceil((dateRange.end - dateRange.start) / (1000 * 60 * 60 * 24)));
@@ -56,6 +57,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
       expenses,
       netIncome,
       savingsRate,
+      savingsRateDecimal,
       avgDailySpending,
       avgTransactionsPerDay,
       totalTransactions: transactions.length
@@ -193,15 +195,15 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
   // Enhanced financial health calculation
   const financialHealthMetrics = useMemo(() => {
     const debtToIncomeRatio = metrics.income > 0 ? metrics.expenses / metrics.income : 1;
-    const emergencyFundRatio = metrics.netIncome > 0 ? (metrics.netIncome * 3) / metrics.expenses : 0;
+    const emergencyFundRatio = metrics.expenses > 0 ? Math.min(1, metrics.netIncome / (metrics.expenses * 0.25)) : 0;
     const spendingConsistency = transactions.length > 7 ? 
-      1 - (Math.abs(metrics.avgDailySpending - (metrics.expenses / 30)) / metrics.avgDailySpending) : 0.5;
+      Math.max(0, 1 - (Math.abs(metrics.avgDailySpending - (metrics.expenses / 30)) / Math.max(1, metrics.avgDailySpending))) : 0.5;
     
     const baseScore = (
-      metrics.savingsRate * 0.3 + 
-      (1 - Math.min(1, debtToIncomeRatio)) * 0.25 +
-      Math.min(1, emergencyFundRatio) * 0.25 +
-      spendingConsistency * 0.2
+      metrics.savingsRateDecimal * 100 * 0.3 + 
+      (1 - Math.min(1, debtToIncomeRatio)) * 100 * 0.25 +
+      emergencyFundRatio * 100 * 0.25 +
+      spendingConsistency * 100 * 0.2
     );
     
     const score = Math.min(100, Math.max(0, baseScore));
@@ -406,7 +408,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
             {formatCurrency(metrics.netIncome)}
           </div>
           <div className="text-sm text-slate-400">
-            {formatPercentage(metrics.savingsRate)} savings rate
+            {isNaN(metrics.savingsRate) ? '0.0%' : `${metrics.savingsRate.toFixed(1)}%`} savings rate
           </div>
         </div>
 
@@ -569,7 +571,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
               metrics.savingsRate >= 20 ? 'text-emerald-400' :
               metrics.savingsRate >= 10 ? 'text-yellow-400' : 'text-red-400'
             }`}>
-              {formatPercentage(metrics.savingsRate)}
+              {isNaN(metrics.savingsRate) ? '0.0%' : `${metrics.savingsRate.toFixed(1)}%`}
             </div>
             <div className="text-sm text-slate-400">
               {metrics.savingsRate >= 20 ? 'Excellent!' :
