@@ -268,8 +268,6 @@ function Dashboard() {
               </div>
             </div>
           )}
-        </div>
-        </div>
       </div>
 
       {/* Modern Stats Cards */}
