@@ -31,6 +31,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
   const [selectedMetric, setSelectedMetric] = useState('overview');
   const [chartType, setChartType] = useState('area'); // 'area', 'bar', 'composed'
   const [timeGranularity, setTimeGranularity] = useState('daily'); // 'daily', 'weekly', 'monthly'
+  const [showHealthTooltip, setShowHealthTooltip] = useState(false);
   // Calculate key financial metrics
   const metrics = useMemo(() => {
     const income = transactions
@@ -194,26 +195,60 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
 
   // Enhanced financial health calculation
   const financialHealthMetrics = useMemo(() => {
-    const debtToIncomeRatio = metrics.income > 0 ? metrics.expenses / metrics.income : 1;
-    const emergencyFundRatio = metrics.expenses > 0 ? Math.min(1, metrics.netIncome / (metrics.expenses * 0.25)) : 0;
-    const spendingConsistency = transactions.length > 7 ? 
-      Math.max(0, 1 - (Math.abs(metrics.avgDailySpending - (metrics.expenses / 30)) / Math.max(1, metrics.avgDailySpending))) : 0.5;
+    // Savings Rate Score (50 points max)
+    let savingsScore = 0;
+    if (metrics.savingsRateDecimal >= 0.30) savingsScore = 50; // 30%+ = Excellent
+    else if (metrics.savingsRateDecimal >= 0.20) savingsScore = 45; // 20-29% = Very Good
+    else if (metrics.savingsRateDecimal >= 0.15) savingsScore = 40; // 15-19% = Good
+    else if (metrics.savingsRateDecimal >= 0.10) savingsScore = 30; // 10-14% = Fair
+    else if (metrics.savingsRateDecimal >= 0.05) savingsScore = 20; // 5-9% = Poor
+    else if (metrics.savingsRateDecimal >= 0) savingsScore = 10; // 0-4% = Very Poor
+    else savingsScore = 0; // Negative savings
     
-    const baseScore = (
-      metrics.savingsRateDecimal * 100 * 0.3 + 
-      (1 - Math.min(1, debtToIncomeRatio)) * 100 * 0.25 +
-      emergencyFundRatio * 100 * 0.25 +
-      spendingConsistency * 100 * 0.2
-    );
+    // Expense Ratio Score (25 points max) - Lower is better
+    const expenseRatio = metrics.income > 0 ? metrics.expenses / metrics.income : 1;
+    let expenseScore = 0;
+    if (expenseRatio <= 0.50) expenseScore = 25; // Spending ≤50% of income
+    else if (expenseRatio <= 0.70) expenseScore = 20; // 50-70%
+    else if (expenseRatio <= 0.80) expenseScore = 15; // 70-80%
+    else if (expenseRatio <= 0.90) expenseScore = 10; // 80-90%
+    else if (expenseRatio <= 1.00) expenseScore = 5; // 90-100%
+    else expenseScore = 0; // Overspending
     
-    const score = Math.min(100, Math.max(0, baseScore));
+    // Financial Stability Score (15 points max)
+    const hasPositiveIncome = metrics.income > 0 ? 10 : 0;
+    const hasTransactions = transactions.length > 0 ? 5 : 0;
+    const stabilityScore = hasPositiveIncome + hasTransactions;
+    
+    // Activity Score (10 points max) - Consistent financial activity
+    let activityScore = 0;
+    if (transactions.length >= 20) activityScore = 10;
+    else if (transactions.length >= 10) activityScore = 8;
+    else if (transactions.length >= 5) activityScore = 6;
+    else if (transactions.length >= 1) activityScore = 4;
+    
+    const totalScore = savingsScore + expenseScore + stabilityScore + activityScore;
+    
+    // Grade boundaries: A=85+, B=70+, C=55+, D=40+, F=<40
+    let grade = 'F';
+    if (totalScore >= 85) grade = 'A';
+    else if (totalScore >= 70) grade = 'B';
+    else if (totalScore >= 55) grade = 'C';
+    else if (totalScore >= 40) grade = 'D';
     
     return {
-      score,
-      debtToIncomeRatio,
-      emergencyFundRatio,
-      spendingConsistency,
-      grade: score >= 80 ? 'A' : score >= 60 ? 'B' : score >= 40 ? 'C' : 'D'
+      score: totalScore,
+      savingsScore,
+      expenseScore,
+      stabilityScore,
+      activityScore,
+      expenseRatio,
+      grade,
+      breakdown: {
+        savingsRate: `${(metrics.savingsRateDecimal * 100).toFixed(1)}%`,
+        expenseRatio: `${(expenseRatio * 100).toFixed(1)}%`,
+        transactionCount: transactions.length
+      }
     };
   }, [metrics, transactions]);
 
@@ -368,11 +403,70 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Financial Health Score */}
-        <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
+        <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg relative">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-slate-400">Financial Health</h3>
+            <div className="flex items-center space-x-2">
+              <h3 className="text-sm font-medium text-slate-400">Financial Health</h3>
+              <button
+                onMouseEnter={() => setShowHealthTooltip(true)}
+                onMouseLeave={() => setShowHealthTooltip(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                ⓘ
+              </button>
+            </div>
             <span className="text-2xl">💚</span>
           </div>
+          
+          {/* Tooltip */}
+          {showHealthTooltip && (
+            <div className="absolute top-0 left-0 w-80 bg-slate-800 border border-slate-600 rounded-lg p-4 shadow-xl z-50 text-sm">
+              <h4 className="text-white font-semibold mb-3">How Financial Health is Calculated</h4>
+              <div className="space-y-2 text-slate-300">
+                <div className="flex justify-between">
+                  <span>💰 Savings Rate ({financialHealthMetrics.breakdown.savingsRate}):</span>
+                  <span className="text-white">{financialHealthMetrics.savingsScore}/50</span>
+                </div>
+                <div className="text-xs text-slate-400 ml-4 mb-2">
+                  30%+ = 50pts, 20-29% = 45pts, 15-19% = 40pts, 10-14% = 30pts
+                </div>
+                
+                <div className="flex justify-between">
+                  <span>📊 Expense Ratio ({financialHealthMetrics.breakdown.expenseRatio}):</span>
+                  <span className="text-white">{financialHealthMetrics.expenseScore}/25</span>
+                </div>
+                <div className="text-xs text-slate-400 ml-4 mb-2">
+                  ≤50% = 25pts, 50-70% = 20pts, 70-80% = 15pts, 80-90% = 10pts
+                </div>
+                
+                <div className="flex justify-between">
+                  <span>🏦 Financial Stability:</span>
+                  <span className="text-white">{financialHealthMetrics.stabilityScore}/15</span>
+                </div>
+                <div className="text-xs text-slate-400 ml-4 mb-2">
+                  Positive income (10pts) + Active transactions (5pts)
+                </div>
+                
+                <div className="flex justify-between">
+                  <span>📈 Activity ({financialHealthMetrics.breakdown.transactionCount} transactions):</span>
+                  <span className="text-white">{financialHealthMetrics.activityScore}/10</span>
+                </div>
+                <div className="text-xs text-slate-400 ml-4 mb-2">
+                  20+ = 10pts, 10-19 = 8pts, 5-9 = 6pts, 1-4 = 4pts
+                </div>
+                
+                <div className="border-t border-slate-600 pt-2 mt-3">
+                  <div className="flex justify-between font-semibold">
+                    <span className="text-white">Total Score:</span>
+                    <span className="text-white">{financialHealthMetrics.score}/100</span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    A: 85+, B: 70-84, C: 55-69, D: 40-54, F: &lt;40
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           <div className={`text-3xl font-bold ${getHealthColor(healthScore)} mb-2`}>
             {healthScore.toFixed(0)}/100
           </div>
