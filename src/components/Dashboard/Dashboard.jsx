@@ -150,31 +150,40 @@ function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Modern Welcome Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-900 to-blue-900 p-8 shadow-2xl">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-900 to-blue-900 p-4 sm:p-6 lg:p-8 shadow-2xl">
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-teal-500/10"></div>
         <div className="relative z-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
-            <div className="mb-6 lg:mb-0">
-              <h1 className="text-3xl lg:text-4xl font-bold text-white mb-2">
-                {getGreeting()}, {getUserDisplayName()}! {getFinancialStatusEmoji()}
-              </h1>
-              <div className="text-lg text-slate-300 mb-4 flex items-center gap-3">
-                <span>{transactions.length === 0 ? "Let's set up your financial tracking" : 'Overview for'}</span>
-                {transactions.length > 0 && (
-                  <>
-                    <select value={viewMode} onChange={(e)=>setViewMode(e.target.value)} className="bg-slate-800/70 border border-slate-700 text-slate-200 rounded-md px-2 py-1">
+          {/* Header with greeting */}
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2">
+              {getGreeting()}, {getUserDisplayName()}! {getFinancialStatusEmoji()}
+            </h1>
+            
+            {/* Period selector for mobile-first design */}
+            {transactions.length > 0 && (
+              <div className="space-y-3 sm:space-y-0">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  <span className="text-base sm:text-lg text-slate-300">
+                    Overview for
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <select 
+                      value={viewMode} 
+                      onChange={(e)=>setViewMode(e.target.value)} 
+                      className="bg-slate-800/70 border border-slate-700 text-slate-200 rounded-lg px-3 py-2 text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    >
                       <option value="cycle">Pay Cycle</option>
                       <option value="calendar">Calendar Month</option>
                       <option value="all">All Time</option>
                     </select>
-                    <span className="text-white/80 font-medium">{cycleLabel}</span>
-                  </>
-                )}
-              </div>
-              
-              {/* Financial Health Indicator */}
-              {transactions.length > 0 && (
-                <div className="flex items-center space-x-4">
+                    <span className="text-white/80 font-medium text-sm sm:text-base">
+                      {cycleLabel}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Financial Health Indicator */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                   <div className="flex items-center space-x-2">
                     <div className={`w-3 h-3 rounded-full ${
                       stats.balance > stats.totalExpenses * 0.2 ? 'bg-emerald-400' :
@@ -196,29 +205,36 @@ function Dashboard() {
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-            
-            {/* Quick Stats Preview */}
-            {transactions.length > 0 && (
-              <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 lg:text-right">
-                <div>
-                  <p className="text-slate-400 text-sm">Net Income</p>
-                  <p className={`text-2xl font-bold ${
-                    stats.balance > 0 ? 'text-emerald-400' : stats.balance < 0 ? 'text-rose-400' : 'text-slate-300'
-                  }`}>
-                    {stats.balance < 0 ? '-' : stats.balance > 0 ? '+' : ''}${Math.abs(stats.balance).toLocaleString()}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400 text-sm">Top Category</p>
-                  <p className="text-white font-semibold">
-                    {stats.topCategory || 'N/A'}
-                  </p>
-                </div>
               </div>
             )}
+            
+            {transactions.length === 0 && (
+              <p className="text-base sm:text-lg text-slate-300">
+                Let's set up your financial tracking
+              </p>
+            )}
           </div>
+          
+          {/* Quick Stats Preview - Mobile optimized */}
+          {transactions.length > 0 && (
+            <div className="grid grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4">
+                <p className="text-slate-400 text-xs sm:text-sm mb-1">Net Income</p>
+                <p className={`text-lg sm:text-xl lg:text-2xl font-bold ${
+                  stats.balance > 0 ? 'text-emerald-400' : stats.balance < 0 ? 'text-rose-400' : 'text-slate-300'
+                }`}>
+                  {stats.balance < 0 ? '-' : stats.balance > 0 ? '+' : ''}${Math.abs(stats.balance).toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4">
+                <p className="text-slate-400 text-xs sm:text-sm mb-1">Top Category</p>
+                <p className="text-white font-semibold text-sm sm:text-base truncate">
+                  {stats.topCategory || 'N/A'}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
           
           {/* First Time User Onboarding */}
           {transactions.length === 0 && (
@@ -253,6 +269,7 @@ function Dashboard() {
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {/* Modern Stats Cards */}
@@ -262,22 +279,19 @@ function Dashboard() {
             title="💰 Monthly Income"
             amount={stats.totalIncome}
             type="income"
-            color="emerald"
-            gradient="from-emerald-500 to-teal-600"
+            color="green"
           />
           <IncomeExpenseCard
             title="💸 Monthly Expenses"
             amount={stats.totalExpenses}
             type="expense"
             color="blue"
-            gradient="from-blue-500 to-indigo-600"
           />
           <IncomeExpenseCard
             title="📊 Net Income"
             amount={stats.balance}
             type="balance"
-            color={stats.balance >= 0 ? "emerald" : "rose"}
-            gradient={stats.balance >= 0 ? "from-emerald-500 to-green-600" : "from-rose-500 to-red-600"}
+            color={stats.balance >= 0 ? "green" : "red"}
           />
         </div>
       )}
