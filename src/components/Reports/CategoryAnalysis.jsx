@@ -21,11 +21,11 @@ const CATEGORY_COLORS = [
 ];
 
 function CategoryAnalysis({ transactions, categories, dateRange, selectedCategories, setSelectedCategories, viewMode = 'detailed', onExport }) {
-  const [analysisView, setAnalysisView] = useState('overview'); // 'overview', 'spending', 'trends', 'insights'
   const [timeframe, setTimeframe] = useState('all'); // 'all', 'month', 'quarter', 'year'
   const [chartType, setChartType] = useState('pie'); // 'pie', 'bar', 'treemap'
   const [sortBy, setSortBy] = useState('amount'); // 'amount', 'count', 'growth', 'efficiency'
   const [showOnlyExpenses] = useState(true);
+  const [showImpactTooltip, setShowImpactTooltip] = useState(false);
 
   // Enhanced category analytics with actionable insights
   const categoryAnalytics = useMemo(() => {
@@ -338,6 +338,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
                 outerRadius={120}
                 paddingAngle={2}
                 dataKey="value"
+                fill="#8884d8"
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
@@ -362,30 +363,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
     <div className="space-y-8">
       {/* Enhanced Control Panel */}
       <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Analysis View */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-slate-400">View:</span>
-            <div className="flex bg-slate-800 rounded-lg p-1 flex-1">
-              {[
-                { id: 'overview', label: 'Overview', icon: '📊' },
-                { id: 'insights', label: 'Insights', icon: '💡' }
-              ].map(mode => (
-                <button
-                  key={mode.id}
-                  onClick={() => setAnalysisView(mode.id)}
-                  className={`px-2 py-1 rounded-md text-xs font-medium transition-all flex-1 ${
-                    analysisView === mode.id
-                      ? 'bg-blue-500 text-white'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <span className="mr-1">{mode.icon}</span>
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           
           {/* Timeframe */}
           <div className="flex items-center space-x-2">
@@ -458,43 +436,14 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
         </div>
       </div>
 
-      {/* Smart Insights Panel */}
-      {analysisView === 'insights' && (
-        <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
-          <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
-            <span className="mr-3">🧠</span>
-            Smart Insights & Recommendations
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {smartInsights.map((insight, index) => (
-              <div key={index} className="bg-slate-800/50 rounded-lg p-6 border border-slate-700/50">
-                <div className="flex items-center mb-3">
-                  <span className="text-2xl mr-3">{insight.icon}</span>
-                  <div>
-                    <h4 className="text-lg font-semibold text-white">{insight.title}</h4>
-                    <div className="text-2xl font-bold text-blue-400 mt-1">{insight.value}</div>
-                  </div>
-                </div>
-                <p className="text-slate-300 mb-3">{insight.description}</p>
-                <div className="bg-slate-700/50 rounded-lg p-3">
-                  <div className="text-sm font-medium text-slate-400 mb-1">Recommendation:</div>
-                  <div className="text-sm text-slate-200">{insight.action}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Main Visualization */}
+      {/* Main Visualization - Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Chart Section */}
         <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-semibold text-white flex items-center">
               <span className="mr-3">📈</span>
-              Category Analysis
+              Category Overview
             </h3>
             <div className="text-sm text-slate-400">
               {categoryAnalytics.length} categories • {formatCurrency(categoryAnalytics.reduce((sum, cat) => sum + cat.totalAmount, 0))} total
@@ -508,10 +457,50 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
         
         {/* Category Details */}
         <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
-          <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
-            <span className="mr-3">📋</span>
-            Category Details
-          </h3>
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-semibold text-white flex items-center">
+              <span className="mr-3">📋</span>
+              Category Details
+            </h3>
+            <button
+              onMouseEnter={() => setShowImpactTooltip(true)}
+              onMouseLeave={() => setShowImpactTooltip(false)}
+              className="text-slate-400 hover:text-white transition-colors relative"
+            >
+              ⓘ
+              {/* Impact Tooltip */}
+              {showImpactTooltip && (
+                <div className="absolute top-6 right-0 w-80 bg-slate-800 border border-slate-600 rounded-lg p-4 shadow-xl text-sm z-50">
+                  <h4 className="text-white font-semibold mb-3">Budget Impact Levels</h4>
+                  <div className="space-y-3 text-slate-300">
+                    <div className="flex items-center space-x-3">
+                      <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-300">HIGH IMPACT</span>
+                      <span className="text-sm">More than 20% of total spending</span>
+                    </div>
+                    <div className="text-xs text-slate-400 ml-16">
+                      These categories significantly affect your budget. Consider setting spending limits or finding alternatives.
+                    </div>
+                    
+                    <div className="flex items-center space-x-3">
+                      <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-300">MEDIUM IMPACT</span>
+                      <span className="text-sm">10-20% of total spending</span>
+                    </div>
+                    <div className="text-xs text-slate-400 ml-16">
+                      Moderate influence on your budget. Monitor regularly and look for optimization opportunities.
+                    </div>
+                    
+                    <div className="flex items-center space-x-3">
+                      <span className="inline-block px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-300">LOW IMPACT</span>
+                      <span className="text-sm">Less than 10% of total spending</span>
+                    </div>
+                    <div className="text-xs text-slate-400 ml-16">
+                      Minor impact on your budget. These are typically well-controlled expenses.
+                    </div>
+                  </div>
+                </div>
+              )}
+            </button>
+          </div>
           
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {categoryAnalytics.map((category) => (
@@ -586,6 +575,35 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
           </div>
         </div>
       </div>
+
+      {/* Smart Insights Panel */}
+      <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
+        <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+          <span className="mr-3">🧠</span>
+          Smart Insights & Recommendations
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {smartInsights.map((insight, index) => (
+            <div key={index} className="bg-slate-800/50 rounded-lg p-6 border border-slate-700/50">
+              <div className="flex items-center mb-3">
+                <span className="text-2xl mr-3">{insight.icon}</span>
+                <div>
+                  <h4 className="text-lg font-semibold text-white">{insight.title}</h4>
+                  <div className="text-2xl font-bold text-blue-400 mt-1">{insight.value}</div>
+                </div>
+              </div>
+              <p className="text-slate-300 mb-3">{insight.description}</p>
+              <div className="bg-slate-700/50 rounded-lg p-3">
+                <div className="text-sm font-medium text-slate-400 mb-1">Recommendation:</div>
+                <div className="text-sm text-slate-200">{insight.action}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+
     </div>
   );
 }
