@@ -30,6 +30,10 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
 
   // Enhanced category analytics with actionable insights
   const categoryAnalytics = useMemo(() => {
+    if (!categories.length || !transactions.length) return [];
+    
+
+    
     const analytics = {};
     const now = new Date();
     
@@ -55,7 +59,6 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
       analytics[category.id] = {
         id: category.id,
         name: category.name,
-        color: category.color || CATEGORY_COLORS[index % CATEGORY_COLORS.length],
         totalAmount: 0,
         transactionCount: 0,
         averageAmount: 0,
@@ -237,13 +240,15 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
     return insights;
   }, [categoryAnalytics]);
 
-  // Chart data preparation
+  // Chart data preparation - following ReportsDashboard pattern
   const chartData = useMemo(() => {
+
+    
     const filteredData = selectedCategories.length > 0 
       ? categoryAnalytics.filter(cat => selectedCategories.includes(cat.id))
       : categoryAnalytics;
     
-    return filteredData
+    const processedData = filteredData
       .filter(category => category.totalAmount > 0) // Only include categories with transactions
       .map(category => ({
         name: category.name,
@@ -251,9 +256,16 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
         count: category.transactionCount,
         percentage: category.percentageOfTotal,
         efficiency: category.efficiency,
-        frequency: category.frequency,
-        color: category.color
+        frequency: category.frequency
       }));
+    
+    // Assign colors AFTER processing, like ReportsDashboard does
+    processedData.forEach((category, index) => {
+      category.color = CATEGORY_COLORS[index % CATEGORY_COLORS.length];
+    });
+    
+
+    return processedData;
   }, [categoryAnalytics, selectedCategories]);
 
   // Category selection handlers
