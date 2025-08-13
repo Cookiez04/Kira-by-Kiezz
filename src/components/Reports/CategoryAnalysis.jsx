@@ -341,7 +341,6 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
                 outerRadius={120}
                 paddingAngle={2}
                 dataKey="value"
-                fill="#8884d8"
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
