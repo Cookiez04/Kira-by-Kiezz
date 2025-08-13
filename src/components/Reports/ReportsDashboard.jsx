@@ -46,12 +46,17 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
     const savingsRate = income > 0 ? (netIncome / income) * 100 : 0;
     const savingsRateDecimal = income > 0 ? (netIncome / income) : 0;
     
-    // Calculate average daily spending
-    const days = Math.max(1, Math.ceil((dateRange.end - dateRange.start) / (1000 * 60 * 60 * 24)));
-    const avgDailySpending = expenses / days;
+    // Calculate actual period based on transactions, not the full date range
+    const transactionDates = transactions.map(t => new Date(t.date));
+    const actualStartDate = transactionDates.length > 0 ? new Date(Math.min(...transactionDates)) : new Date();
+    const actualEndDate = transactionDates.length > 0 ? new Date(Math.max(...transactionDates)) : new Date();
+    const actualDays = Math.max(1, Math.ceil((actualEndDate - actualStartDate) / (1000 * 60 * 60 * 24)) + 1);
     
-    // Calculate transaction frequency
-    const avgTransactionsPerDay = transactions.length / days;
+    // Calculate average daily spending based on actual transaction period
+    const avgDailySpending = expenses / actualDays;
+    
+    // Calculate transaction frequency based on actual transaction period
+    const avgTransactionsPerDay = transactions.length / actualDays;
     
     return {
       income,
@@ -63,7 +68,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
       avgTransactionsPerDay,
       totalTransactions: transactions.length
     };
-  }, [transactions, dateRange]);
+  }, [transactions]);
 
   // Prepare spending by category data
   const categoryData = useMemo(() => {
@@ -359,44 +364,16 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
 
   return (
     <div className="space-y-8">
-      {/* Controls */}
-      {viewMode === 'detailed' && (
+      {/* Export Controls */}
+      {viewMode === 'detailed' && onExport && (
         <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <label className="text-sm text-slate-400">Chart Type:</label>
-              <select
-                value={chartType}
-                onChange={(e) => setChartType(e.target.value)}
-                className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1 text-sm text-white"
-              >
-                <option value="area">Area Chart</option>
-                <option value="bar">Bar Chart</option>
-                <option value="composed">Composed Chart</option>
-              </select>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <label className="text-sm text-slate-400">Time Period:</label>
-              <select
-                value={timeGranularity}
-                onChange={(e) => setTimeGranularity(e.target.value)}
-                className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1 text-sm text-white"
-              >
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-            
-            {onExport && (
-              <button
-                onClick={() => onExport('csv')}
-                className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
-              >
-                📊 Export Data
-              </button>
-            )}
+          <div className="flex justify-end">
+            <button
+              onClick={() => onExport('csv')}
+              className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+            >
+              📊 Export Data
+            </button>
           </div>
         </div>
       )}
@@ -420,7 +397,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
           
           {/* Tooltip */}
           {showHealthTooltip && (
-            <div className="absolute top-0 left-0 w-80 bg-slate-800 border border-slate-600 rounded-lg p-4 shadow-xl z-50 text-sm">
+            <div className="absolute top-12 left-0 w-80 bg-slate-800 border border-slate-600 rounded-lg p-4 shadow-xl z-[9999] text-sm">
               <h4 className="text-white font-semibold mb-3">How Financial Health is Calculated</h4>
               <div className="space-y-2 text-slate-300">
                 <div className="flex justify-between">
@@ -600,7 +577,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
 
         {/* Financial Trend */}
         <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-white flex items-center">
               <span className="mr-3">📊</span>
               {timeGranularity.charAt(0).toUpperCase() + timeGranularity.slice(1)} Financial Trend
@@ -611,6 +588,37 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
               </div>
             )}
           </div>
+          
+          {/* Chart Controls */}
+          {viewMode === 'detailed' && (
+            <div className="flex flex-wrap items-center gap-4 mb-6 pb-4 border-b border-white/10">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-slate-400">Chart Type:</label>
+                <select
+                  value={chartType}
+                  onChange={(e) => setChartType(e.target.value)}
+                  className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1 text-sm text-white"
+                >
+                  <option value="area">Area Chart</option>
+                  <option value="bar">Bar Chart</option>
+                  <option value="composed">Composed Chart</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-slate-400">Time Period:</label>
+                <select
+                  value={timeGranularity}
+                  onChange={(e) => setTimeGranularity(e.target.value)}
+                  className="bg-slate-700 border border-slate-600 rounded-lg px-3 py-1 text-sm text-white"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+          )}
           
           {timeBasedData.length > 0 ? (
             <div className="h-80">
