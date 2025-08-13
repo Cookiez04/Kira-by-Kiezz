@@ -16,8 +16,9 @@ import {
 // Enhanced color palette for better visual distinction
 const CATEGORY_COLORS = [
   '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
-  '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2', '#A3E4D7',
-  '#FCF3CF', '#FADBD8', '#D5DBDB', '#AED6F1', '#A9DFBF', '#F9E79F', '#D2B4DE', '#AED6F1'
+  '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA', '#F1948A', '#A78BFA', '#34D399', '#FBBF24',
+  '#F87171', '#60A5FA', '#A78BFA', '#34D399', '#FBBF24', '#FB7185', '#38BDF8', '#10B981',
+  '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6366F1'
 ];
 
 function CategoryAnalysis({ transactions, categories, dateRange, selectedCategories, setSelectedCategories, viewMode = 'detailed', onExport }) {
@@ -101,7 +102,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
         ? category.totalAmount / category.transactionCount 
         : 0;
       
-      category.percentageOfTotal = totalSpending > 0 
+      category.percentageOfTotal = totalSpending > 0 && !isNaN(totalSpending) && totalSpending !== 0
         ? (category.totalAmount / totalSpending) * 100 
         : 0;
       
@@ -227,7 +228,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
         icon: '⚠️',
         title: 'High-Impact Categories',
         value: `${highImpactCategories.length} categories`,
-        description: `${formatPercentage(highImpactCategories.reduce((sum, cat) => sum + cat.percentageOfTotal, 0))} of total spending`,
+        description: `${(highImpactCategories.reduce((sum, cat) => sum + (isNaN(cat.percentageOfTotal) ? 0 : cat.percentageOfTotal), 0)).toFixed(1)}% of total spending`,
         action: 'Focus budget optimization efforts on these categories',
         color: '#FF6B6B'
       });
@@ -242,15 +243,17 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
       ? categoryAnalytics.filter(cat => selectedCategories.includes(cat.id))
       : categoryAnalytics;
     
-    return filteredData.map(category => ({
-      name: category.name,
-      value: category.totalAmount,
-      count: category.transactionCount,
-      percentage: category.percentageOfTotal,
-      efficiency: category.efficiency,
-      frequency: category.frequency,
-      color: category.color
-    }));
+    return filteredData
+      .filter(category => category.totalAmount > 0) // Only include categories with transactions
+      .map(category => ({
+        name: category.name,
+        value: category.totalAmount,
+        count: category.transactionCount,
+        percentage: category.percentageOfTotal,
+        efficiency: category.efficiency,
+        frequency: category.frequency,
+        color: category.color
+      }));
   }, [categoryAnalytics, selectedCategories]);
 
   // Category selection handlers
@@ -532,7 +535,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
                       {formatCurrency(category.totalAmount)}
                     </div>
                     <div className="text-xs text-slate-400">
-                      {formatPercentage(category.percentageOfTotal)}
+                      {isNaN(category.percentageOfTotal) ? '0.0%' : `${category.percentageOfTotal.toFixed(1)}%`}
                     </div>
                   </div>
                 </div>
@@ -544,7 +547,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
                       className="h-2 rounded-full transition-all duration-300"
                       style={{ 
                         backgroundColor: category.color,
-                        width: `${Math.min(100, category.percentageOfTotal * 2)}%`
+                        width: `${Math.min(100, isNaN(category.percentageOfTotal) ? 0 : category.percentageOfTotal * 2)}%`
                       }}
                     />
                   </div>
