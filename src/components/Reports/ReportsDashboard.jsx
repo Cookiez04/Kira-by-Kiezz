@@ -380,7 +380,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Financial Health Score */}
-        <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg relative z-50">
+        <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg relative z-10">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <h3 className="text-sm font-medium text-slate-400">Financial Health</h3>
