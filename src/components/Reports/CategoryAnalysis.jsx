@@ -1,179 +1,259 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { formatCurrency, formatPercentage } from '../../utils/formatters';
 import {
+  PieChart,
+  Pie,
+  Cell,
   BarChart,
   Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  ResponsiveContainer,
-  Cell
+  ResponsiveContainer
 } from 'recharts';
 
-function CategoryAnalysis({ transactions, categories, dateRange, selectedCategories, setSelectedCategories, viewMode = 'detailed', onExport }) {
-  const [viewType, setViewType] = useState('spending'); // 'spending', 'frequency'
-  const [sortBy, setSortBy] = useState('amount'); // 'amount', 'count', 'average'
-  const [timeframe, setTimeframe] = useState('all'); // 'all', 'month', 'quarter'
-  const [showOnlyExpenses, setShowOnlyExpenses] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+// Enhanced color palette for better visual distinction
+const CATEGORY_COLORS = [
+  '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F',
+  '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA', '#F1948A', '#85C1E9', '#D7BDE2', '#A3E4D7',
+  '#FCF3CF', '#FADBD8', '#D5DBDB', '#AED6F1', '#A9DFBF', '#F9E79F', '#D2B4DE', '#AED6F1'
+];
 
-  // Simplified category statistics calculation
-  const categoryStats = useMemo(() => {
-    const stats = {};
+function CategoryAnalysis({ transactions, categories, dateRange, selectedCategories, setSelectedCategories, viewMode = 'detailed', onExport }) {
+  const [analysisView, setAnalysisView] = useState('overview'); // 'overview', 'spending', 'trends', 'insights'
+  const [timeframe, setTimeframe] = useState('all'); // 'all', 'month', 'quarter', 'year'
+  const [chartType, setChartType] = useState('pie'); // 'pie', 'bar', 'treemap'
+  const [sortBy, setSortBy] = useState('amount'); // 'amount', 'count', 'growth', 'efficiency'
+  const [showOnlyExpenses] = useState(true);
+
+  // Enhanced category analytics with actionable insights
+  const categoryAnalytics = useMemo(() => {
+    const analytics = {};
+    const now = new Date();
     
     // Filter transactions by timeframe
-    const now = new Date();
-    let filteredTransactions = transactions;
-    
-    if (timeframe !== 'all') {
-      const cutoffDate = new Date();
+    let filteredTransactions = transactions.filter(t => {
+      if (showOnlyExpenses && t.type !== 'expense') return false;
+      
+      const transactionDate = new Date(t.date);
       switch (timeframe) {
         case 'month':
-          cutoffDate.setMonth(now.getMonth() - 1);
-          break;
+          return transactionDate >= new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
         case 'quarter':
-          cutoffDate.setMonth(now.getMonth() - 3);
-          break;
+          return transactionDate >= new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        case 'year':
+          return transactionDate >= new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
         default:
-          break;
+          return true;
       }
-      filteredTransactions = transactions.filter(t => new Date(t.date) >= cutoffDate);
-    }
-    
-    // Filter by expense/income type
-    if (showOnlyExpenses) {
-      filteredTransactions = filteredTransactions.filter(t => t.type === 'expense');
-    }
-    
-    // Initialize all categories
-    categories.forEach(category => {
-      stats[category.id] = {
+    });
+
+    // Initialize category analytics
+    categories.forEach((category, index) => {
+      analytics[category.id] = {
         id: category.id,
         name: category.name,
-        color: category.color,
+        color: category.color || CATEGORY_COLORS[index % CATEGORY_COLORS.length],
         totalAmount: 0,
         transactionCount: 0,
         averageAmount: 0,
-        expenseAmount: 0,
-        percentageOfTotal: 0
+        percentageOfTotal: 0,
+        monthlyAverage: 0,
+        efficiency: 0, // Amount per transaction
+        trend: 'stable', // 'growing', 'declining', 'stable'
+        trendPercentage: 0,
+        lastTransactionDate: null,
+        frequency: 0, // Transactions per month
+        budgetImpact: 'medium', // 'high', 'medium', 'low'
+        insights: []
       };
     });
-    
-    // Process transactions
+
+    // Process transactions and calculate metrics
     filteredTransactions.forEach(transaction => {
       const categoryId = transaction.category_id;
       const category = categories.find(c => c.id === categoryId);
       
-      if (!category) return;
+      if (!category || !analytics[categoryId]) return;
       
       const amount = parseFloat(transaction.amount);
+      const transactionDate = new Date(transaction.date);
       
-      // Update totals
-      stats[categoryId].totalAmount += amount;
-      stats[categoryId].transactionCount += 1;
-      stats[categoryId].expenseAmount += amount;
+      analytics[categoryId].totalAmount += amount;
+      analytics[categoryId].transactionCount += 1;
+      
+      if (!analytics[categoryId].lastTransactionDate || 
+          transactionDate > analytics[categoryId].lastTransactionDate) {
+        analytics[categoryId].lastTransactionDate = transactionDate;
+      }
     });
+
+    // Calculate derived metrics and insights
+    const totalSpending = Object.values(analytics).reduce((sum, cat) => sum + cat.totalAmount, 0);
     
-    // Calculate basic metrics
-    const totalSpending = Object.values(stats).reduce((sum, cat) => sum + cat.expenseAmount, 0);
+    // Calculate period length for frequency calculations
+    const periodMonths = timeframe === 'month' ? 1 : timeframe === 'quarter' ? 3 : timeframe === 'year' ? 12 : 12;
     
-    Object.values(stats).forEach(category => {
+    Object.values(analytics).forEach(category => {
+      // Basic calculations
       category.averageAmount = category.transactionCount > 0 
         ? category.totalAmount / category.transactionCount 
         : 0;
+      
       category.percentageOfTotal = totalSpending > 0 
-        ? (category.expenseAmount / totalSpending) * 100 
+        ? (category.totalAmount / totalSpending) * 100 
         : 0;
+      
+      category.monthlyAverage = category.totalAmount / periodMonths;
+      category.efficiency = category.averageAmount;
+      category.frequency = category.transactionCount / periodMonths;
+      
+      // Budget impact classification
+      if (category.percentageOfTotal > 20) {
+        category.budgetImpact = 'high';
+      } else if (category.percentageOfTotal > 10) {
+        category.budgetImpact = 'medium';
+      } else {
+        category.budgetImpact = 'low';
+      }
+      
+      // Generate actionable insights
+      category.insights = [];
+      
+      if (category.percentageOfTotal > 25) {
+        category.insights.push({
+          type: 'warning',
+          message: `High spending category - ${formatPercentage(category.percentageOfTotal)} of total budget`,
+          action: 'Consider setting a spending limit or finding alternatives'
+        });
+      }
+      
+      if (category.frequency > 10) {
+        category.insights.push({
+          type: 'info',
+          message: `Very frequent transactions (${category.frequency.toFixed(1)}/month)`,
+          action: 'Look for subscription services or recurring charges'
+        });
+      }
+      
+      if (category.averageAmount > 100 && category.transactionCount < 5) {
+        category.insights.push({
+          type: 'tip',
+          message: 'High-value, low-frequency spending',
+          action: 'Plan these expenses in advance for better budgeting'
+        });
+      }
+      
+      if (category.transactionCount === 0) {
+        category.insights.push({
+          type: 'neutral',
+          message: 'No activity in this period',
+          action: 'Consider if this category is still relevant'
+        });
+      }
     });
-    
-    return Object.values(stats)
-      .filter(cat => cat.transactionCount > 0 && 
-        (searchTerm === '' || cat.name.toLowerCase().includes(searchTerm.toLowerCase())))
+
+    return Object.values(analytics)
+      .filter(cat => cat.transactionCount > 0)
       .sort((a, b) => {
         switch (sortBy) {
           case 'count':
             return b.transactionCount - a.transactionCount;
-          case 'average':
-            return b.averageAmount - a.averageAmount;
+          case 'efficiency':
+            return b.efficiency - a.efficiency;
+          case 'growth':
+            return b.trendPercentage - a.trendPercentage;
           default:
-            return b.expenseAmount - a.expenseAmount;
+            return b.totalAmount - a.totalAmount;
         }
       });
-  }, [transactions, categories, sortBy, timeframe, showOnlyExpenses, searchTerm]);
+  }, [transactions, categories, timeframe, showOnlyExpenses, sortBy]);
 
-  // Filter categories based on selection
-  const filteredStats = useMemo(() => {
-    if (selectedCategories.length === 0) return categoryStats;
-    return categoryStats.filter(cat => selectedCategories.includes(cat.id));
-  }, [categoryStats, selectedCategories]);
-
-  // Simplified chart data preparation
-  const chartData = useMemo(() => {
-    switch (viewType) {
-      case 'frequency':
-        return filteredStats.map(cat => ({
-          name: cat.name,
-          value: cat.transactionCount,
-          color: cat.color,
-          average: cat.averageAmount
-        }));
-      default: // spending
-        return filteredStats.map(cat => ({
-          name: cat.name,
-          value: cat.expenseAmount,
-          color: cat.color,
-          count: cat.transactionCount,
-          percentage: cat.percentageOfTotal
-        }));
-    }
-  }, [viewType, filteredStats]);
-
-  // Simplified insights calculation
-  const insights = useMemo(() => {
-    if (categoryStats.length === 0) return [];
-    
+  // Smart insights engine
+  const smartInsights = useMemo(() => {
     const insights = [];
-    const topCategory = categoryStats[0];
-    const totalSpending = categoryStats.reduce((sum, cat) => sum + cat.expenseAmount, 0);
     
-    // Top spending category
+    if (categoryAnalytics.length === 0) return insights;
+    
+    const topCategory = categoryAnalytics[0];
+    const totalSpending = categoryAnalytics.reduce((sum, cat) => sum + cat.totalAmount, 0);
+    const avgCategorySpending = totalSpending / categoryAnalytics.length;
+    
+    // Top spending insight
     insights.push({
-      type: 'top',
-      title: 'Highest Spending',
-      description: `${topCategory.name} accounts for ${formatPercentage(topCategory.percentageOfTotal)} of your expenses`,
-      value: formatCurrency(topCategory.expenseAmount),
+      type: 'primary',
+      icon: '🎯',
+      title: 'Biggest Expense Category',
+      value: formatCurrency(topCategory.totalAmount),
+      description: `${topCategory.name} accounts for ${formatPercentage(topCategory.percentageOfTotal)} of your spending`,
+      action: topCategory.percentageOfTotal > 30 ? 'Consider reducing expenses in this category' : 'Monitor this category closely',
       color: topCategory.color
     });
     
-    // Most frequent category
-    const mostFrequent = [...categoryStats].sort((a, b) => b.transactionCount - a.transactionCount)[0];
-    if (mostFrequent.id !== topCategory.id) {
+    // Efficiency insight
+    const mostEfficient = [...categoryAnalytics].sort((a, b) => a.efficiency - b.efficiency)[0];
+    if (mostEfficient && mostEfficient.efficiency < avgCategorySpending * 0.5) {
       insights.push({
-        type: 'frequent',
-        title: 'Most Transactions',
-        description: `${mostFrequent.name} has ${mostFrequent.transactionCount} transactions`,
-        value: `${mostFrequent.transactionCount} txns`,
+        type: 'positive',
+        icon: '💡',
+        title: 'Most Cost-Effective',
+        value: formatCurrency(mostEfficient.efficiency),
+        description: `${mostEfficient.name} has the lowest average transaction amount`,
+        action: 'Great job keeping costs low in this category',
+        color: mostEfficient.color
+      });
+    }
+    
+    // Frequency insight
+    const mostFrequent = [...categoryAnalytics].sort((a, b) => b.frequency - a.frequency)[0];
+    if (mostFrequent && mostFrequent.frequency > 5) {
+      insights.push({
+        type: 'info',
+        icon: '📊',
+        title: 'Most Active Category',
+        value: `${mostFrequent.frequency.toFixed(1)}/month`,
+        description: `${mostFrequent.name} has the highest transaction frequency`,
+        action: 'Check for recurring subscriptions or regular expenses',
         color: mostFrequent.color
       });
     }
     
-    // Average spending insight
-    const avgSpending = totalSpending / categoryStats.length;
-    if (avgSpending > 0) {
+    // Budget distribution insight
+    const highImpactCategories = categoryAnalytics.filter(cat => cat.budgetImpact === 'high');
+    if (highImpactCategories.length > 0) {
       insights.push({
-        type: 'average',
-        title: 'Average Category Spending',
-        description: `Average spending per category is ${formatCurrency(avgSpending)}`,
-        value: formatCurrency(avgSpending),
-        color: '#64748b'
+        type: 'warning',
+        icon: '⚠️',
+        title: 'High-Impact Categories',
+        value: `${highImpactCategories.length} categories`,
+        description: `${formatPercentage(highImpactCategories.reduce((sum, cat) => sum + cat.percentageOfTotal, 0))} of total spending`,
+        action: 'Focus budget optimization efforts on these categories',
+        color: '#FF6B6B'
       });
     }
     
     return insights;
-  }, [categoryStats]);
+  }, [categoryAnalytics]);
 
-  // Enhanced category selection with bulk operations
+  // Chart data preparation
+  const chartData = useMemo(() => {
+    const filteredData = selectedCategories.length > 0 
+      ? categoryAnalytics.filter(cat => selectedCategories.includes(cat.id))
+      : categoryAnalytics;
+    
+    return filteredData.map(category => ({
+      name: category.name,
+      value: category.totalAmount,
+      count: category.transactionCount,
+      percentage: category.percentageOfTotal,
+      efficiency: category.efficiency,
+      frequency: category.frequency,
+      color: category.color
+    }));
+  }, [categoryAnalytics, selectedCategories]);
+
+  // Category selection handlers
   const toggleCategorySelection = useCallback((categoryId) => {
     if (selectedCategories.includes(categoryId)) {
       setSelectedCategories(selectedCategories.filter(id => id !== categoryId));
@@ -181,38 +261,121 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
       setSelectedCategories([...selectedCategories, categoryId]);
     }
   }, [selectedCategories, setSelectedCategories]);
-  
+
   const selectTopCategories = useCallback((count = 5) => {
-    const topCategories = categoryStats.slice(0, count).map(cat => cat.id);
+    const topCategories = categoryAnalytics.slice(0, count).map(cat => cat.id);
     setSelectedCategories(topCategories);
-  }, [categoryStats, setSelectedCategories]);
-  
+  }, [categoryAnalytics, setSelectedCategories]);
+
   const clearSelection = useCallback(() => {
     setSelectedCategories([]);
   }, [setSelectedCategories]);
-  
-  const selectAll = useCallback(() => {
-    setSelectedCategories(categoryStats.map(cat => cat.id));
-  }, [categoryStats, setSelectedCategories]);
+
+  // Render different chart types
+  const renderChart = () => {
+    if (chartData.length === 0) {
+      return (
+        <div className="h-80 flex items-center justify-center text-slate-400">
+          <div className="text-center">
+            <div className="text-4xl mb-2">📊</div>
+            <div>No data available for selected categories</div>
+          </div>
+        </div>
+      );
+    }
+
+    const commonProps = {
+      data: chartData,
+      margin: { top: 5, right: 30, left: 20, bottom: 5 }
+    };
+
+    switch (chartType) {
+      case 'bar':
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <XAxis 
+                dataKey="name" 
+                stroke="#9CA3AF" 
+                fontSize={12}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+              />
+              <YAxis 
+                stroke="#9CA3AF" 
+                fontSize={12}
+                tickFormatter={(value) => formatCurrency(value, true)}
+              />
+              <Tooltip
+                formatter={(value) => [formatCurrency(value), 'Amount']}
+                contentStyle={{
+                  backgroundColor: '#1F2937',
+                  border: '1px solid #374151',
+                  borderRadius: '8px',
+                  color: '#F3F4F6'
+                }}
+              />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      
+      default:
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={120}
+                paddingAngle={2}
+                dataKey="value"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value) => [formatCurrency(value), 'Amount']}
+                contentStyle={{
+                  backgroundColor: '#1e293b',
+                  border: '1px solid #334155',
+                  borderRadius: '8px',
+                  color: '#ffffff'
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        );
+    }
+  };
 
   return (
     <div className="space-y-8">
-      {/* Enhanced Controls */}
+      {/* Enhanced Control Panel */}
       <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* View Type */}
+          {/* Analysis View */}
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium text-slate-400">View:</span>
             <div className="flex bg-slate-800 rounded-lg p-1 flex-1">
               {[
-                { id: 'spending', label: 'Spending', icon: '💰' },
-                { id: 'frequency', label: 'Frequency', icon: '📊' }
+                { id: 'overview', label: 'Overview', icon: '📊' },
+                { id: 'insights', label: 'Insights', icon: '💡' }
               ].map(mode => (
                 <button
                   key={mode.id}
-                  onClick={() => setViewType(mode.id)}
+                  onClick={() => setAnalysisView(mode.id)}
                   className={`px-2 py-1 rounded-md text-xs font-medium transition-all flex-1 ${
-                    viewType === mode.id
+                    analysisView === mode.id
                       ? 'bg-blue-500 text-white'
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
@@ -224,7 +387,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
             </div>
           </div>
           
-          {/* Timeframe Filter */}
+          {/* Timeframe */}
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium text-slate-400">Period:</span>
             <select
@@ -239,73 +402,48 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
             </select>
           </div>
           
-          {/* Search */}
+          {/* Chart Type */}
           <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-slate-400">Search:</span>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Category name..."
-              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          {/* Type Filter */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-slate-400">Type:</span>
-            <button
-              onClick={() => setShowOnlyExpenses(!showOnlyExpenses)}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors flex-1 ${
-                showOnlyExpenses 
-                  ? 'bg-red-500 hover:bg-red-600 text-white' 
-                  : 'bg-slate-800 hover:bg-slate-700 text-white'
-              }`}
-            >
-              {showOnlyExpenses ? 'Expenses Only' : 'All Types'}
-            </button>
-          </div>
-        </div>
-        
-        {/* Secondary Controls */}
-        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-white/10">
-          {/* Sort Controls */}
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-slate-400">Sort by:</span>
+            <span className="text-sm font-medium text-slate-400">Chart:</span>
             <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={chartType}
+              onChange={(e) => setChartType(e.target.value)}
+              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="amount">Amount</option>
-              <option value="count">Count</option>
-              <option value="average">Average</option>
+              <option value="pie">Pie Chart</option>
+              <option value="bar">Bar Chart</option>
             </select>
           </div>
           
-          {/* Selection Controls */}
+          {/* Sort Options */}
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => selectTopCategories(5)}
-              className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+            <span className="text-sm font-medium text-slate-400">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              Top 5
-            </button>
-            <button
-              onClick={selectAll}
-              className="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm transition-colors"
-            >
-              All
-            </button>
-            <button
-              onClick={clearSelection}
-              className="px-3 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm transition-colors"
-            >
-              Clear
-            </button>
+              <option value="amount">Amount</option>
+              <option value="count">Frequency</option>
+              <option value="efficiency">Efficiency</option>
+            </select>
           </div>
-          
-          {/* Export */}
+        </div>
+        
+        {/* Quick Actions */}
+        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-white/10">
+          <button
+            onClick={() => selectTopCategories(5)}
+            className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm transition-colors"
+          >
+            Top 5
+          </button>
+          <button
+            onClick={clearSelection}
+            className="px-3 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg text-sm transition-colors"
+          >
+            Clear
+          </button>
           {onExport && (
             <button
               onClick={() => onExport('csv')}
@@ -314,103 +452,69 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
               📊 Export
             </button>
           )}
-          
-          {/* Category Filter Status */}
-          <div className="flex items-center space-x-2 ml-auto">
-            <span className="text-sm font-medium text-slate-400">
-              {selectedCategories.length > 0 ? `${selectedCategories.length} selected` : 'All categories'}
-            </span>
+          <div className="ml-auto text-sm text-slate-400">
+            {selectedCategories.length > 0 ? `${selectedCategories.length} selected` : 'All categories'}
           </div>
         </div>
       </div>
 
-      {/* Main Chart */}
-      <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold text-white flex items-center">
-            <span className="mr-3">
-              {viewType === 'spending' ? '💰' : viewType === 'frequency' ? '📊' : viewType === 'trends' ? '📈' : '🌳'}
-            </span>
-            {viewType === 'spending' ? 'Spending by Category' :
-             viewType === 'frequency' ? 'Transaction Frequency' : 
-             viewType === 'trends' ? 'Category Trends' : 'Category Hierarchy'}
+      {/* Smart Insights Panel */}
+      {analysisView === 'insights' && (
+        <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
+          <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+            <span className="mr-3">🧠</span>
+            Smart Insights & Recommendations
           </h3>
-          {viewMode === 'detailed' && (
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {smartInsights.map((insight, index) => (
+              <div key={index} className="bg-slate-800/50 rounded-lg p-6 border border-slate-700/50">
+                <div className="flex items-center mb-3">
+                  <span className="text-2xl mr-3">{insight.icon}</span>
+                  <div>
+                    <h4 className="text-lg font-semibold text-white">{insight.title}</h4>
+                    <div className="text-2xl font-bold text-blue-400 mt-1">{insight.value}</div>
+                  </div>
+                </div>
+                <p className="text-slate-300 mb-3">{insight.description}</p>
+                <div className="bg-slate-700/50 rounded-lg p-3">
+                  <div className="text-sm font-medium text-slate-400 mb-1">Recommendation:</div>
+                  <div className="text-sm text-slate-200">{insight.action}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Main Visualization */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Chart Section */}
+        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-xl font-semibold text-white flex items-center">
+              <span className="mr-3">📈</span>
+              Category Analysis
+            </h3>
             <div className="text-sm text-slate-400">
-              {categoryStats.length} categories • {formatCurrency(categoryStats.reduce((sum, cat) => sum + cat.expenseAmount, 0))} total
+              {categoryAnalytics.length} categories • {formatCurrency(categoryAnalytics.reduce((sum, cat) => sum + cat.totalAmount, 0))} total
             </div>
-          )}
+          </div>
+          
+          <div className="h-96">
+            {renderChart()}
+          </div>
         </div>
         
-        {chartData.length > 0 ? (
-          <div className="h-96">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                <XAxis 
-                  dataKey="name" 
-                  stroke="#64748b"
-                  fontSize={12}
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
-                />
-                <YAxis 
-                  stroke="#64748b"
-                  fontSize={12}
-                  tickFormatter={(value) => 
-                    viewType === 'frequency' ? value.toString() : formatCurrency(value, true)
-                  }
-                />
-                <Tooltip
-                  formatter={(value) => [
-                    viewType === 'frequency' ? `${value} transactions` : formatCurrency(value),
-                    viewType === 'frequency' ? 'Count' : 'Amount'
-                  ]}
-                  contentStyle={{
-                    backgroundColor: '#1e293b',
-                    border: '1px solid #334155',
-                    borderRadius: '8px',
-                    color: '#f1f5f9'
-                  }}
-                />
-                <Bar 
-                  dataKey="value" 
-                  fill={(entry) => entry.color}
-                  radius={[4, 4, 0, 0]}
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="h-96 flex items-center justify-center text-slate-400">
-            <div className="text-center">
-              <div className="text-4xl mb-2">📊</div>
-              <div>No data available for selected categories</div>
-              {searchTerm && (
-                <div className="text-sm mt-2">Try adjusting your search or filters</div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Category List & Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Category List */}
-        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
+        {/* Category Details */}
+        <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
           <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
             <span className="mr-3">📋</span>
             Category Details
           </h3>
           
           <div className="space-y-3 max-h-96 overflow-y-auto">
-            {categoryStats.map((category) => (
+            {categoryAnalytics.map((category) => (
               <div
                 key={category.id}
                 className={`p-4 rounded-lg border transition-all cursor-pointer ${
@@ -420,7 +524,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
                 }`}
                 onClick={() => toggleCategorySelection(category.id)}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-3">
                     <div 
                       className="w-4 h-4 rounded-full"
@@ -428,24 +532,24 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
                     />
                     <div>
                       <div className="font-medium text-white">{category.name}</div>
-                      <div className="text-sm text-slate-400">
-                        {category.transactionCount} transactions • Avg: {formatCurrency(category.averageAmount)}
+                      <div className="text-xs text-slate-400">
+                        {category.transactionCount} transactions
                       </div>
                     </div>
                   </div>
                   
                   <div className="text-right">
                     <div className="font-semibold text-white">
-                      {formatCurrency(category.expenseAmount)}
+                      {formatCurrency(category.totalAmount)}
                     </div>
-                    <div className="text-sm text-slate-400">
+                    <div className="text-xs text-slate-400">
                       {formatPercentage(category.percentageOfTotal)}
                     </div>
                   </div>
                 </div>
                 
                 {/* Progress bar */}
-                <div className="mt-3">
+                <div className="mb-2">
                   <div className="bg-slate-700 rounded-full h-2">
                     <div 
                       className="h-2 rounded-full transition-all duration-300"
@@ -456,51 +560,29 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
                     />
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        
-        {/* Insights Panel */}
-        <div className="bg-slate-900/60 backdrop-blur-sm border border-white/10 rounded-xl p-6 shadow-lg">
-          <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
-            <span className="mr-3">💡</span>
-            Key Insights
-          </h3>
-          
-          <div className="space-y-4">
-            {insights.map((insight, index) => (
-              <div key={index} className="bg-slate-800/50 rounded-lg p-4">
-                <div className="flex items-center mb-2">
-                  <div 
-                    className="w-3 h-3 rounded-full mr-2"
-                    style={{ backgroundColor: insight.color }}
-                  />
-                  <span className="text-sm font-medium text-slate-300">
-                    {insight.title}
+                
+                {/* Key metrics */}
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="text-slate-400">
+                    Avg: {formatCurrency(category.averageAmount)}
+                  </div>
+                  <div className="text-slate-400">
+                    Freq: {category.frequency.toFixed(1)}/mo
+                  </div>
+                </div>
+                
+                {/* Budget impact indicator */}
+                <div className="mt-2">
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                    category.budgetImpact === 'high' ? 'bg-red-500/20 text-red-300' :
+                    category.budgetImpact === 'medium' ? 'bg-yellow-500/20 text-yellow-300' :
+                    'bg-green-500/20 text-green-300'
+                  }`}>
+                    {category.budgetImpact.toUpperCase()} IMPACT
                   </span>
                 </div>
-                <div className="text-lg font-semibold text-white mb-1">
-                  {insight.value}
-                </div>
-                <div className="text-sm text-slate-400">
-                  {insight.description}
-                </div>
               </div>
             ))}
-            
-            {/* Category Distribution */}
-            <div className="bg-slate-800/50 rounded-lg p-4">
-              <div className="text-sm font-medium text-slate-300 mb-2">
-                Distribution
-              </div>
-              <div className="text-lg font-semibold text-white mb-1">
-                {categoryStats.length} Categories
-              </div>
-              <div className="text-sm text-slate-400">
-                Average {formatCurrency(categoryStats.reduce((sum, cat) => sum + cat.expenseAmount, 0) / categoryStats.length)} per category
-              </div>
-            </div>
           </div>
         </div>
       </div>
