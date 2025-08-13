@@ -190,7 +190,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
       icon: '🎯',
       title: 'Biggest Expense Category',
       value: formatCurrency(topCategory.totalAmount),
-      description: `${topCategory.name} accounts for ${formatPercentage(topCategory.percentageOfTotal)} of your spending`,
+      description: `${topCategory.name} accounts for ${isNaN(topCategory.percentageOfTotal) ? '0.0%' : `${topCategory.percentageOfTotal.toFixed(1)}%`} of your spending`,
       action: topCategory.percentageOfTotal > 30 ? 'Consider reducing expenses in this category' : 'Monitor this category closely',
       color: topCategory.color
     });
