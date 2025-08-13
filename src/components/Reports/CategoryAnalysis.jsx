@@ -8,26 +8,17 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
-  Area,
-  AreaChart,
-  ComposedChart,
-  Treemap
+  Cell
 } from 'recharts';
 
 function CategoryAnalysis({ transactions, categories, dateRange, selectedCategories, setSelectedCategories, viewMode = 'detailed', onExport }) {
-  const [viewType, setViewType] = useState('spending'); // 'spending', 'frequency', 'trends', 'treemap'
-  const [sortBy, setSortBy] = useState('amount'); // 'amount', 'count', 'average', 'trend', 'volatility', 'frequency'
-  const [timeframe, setTimeframe] = useState('all'); // 'all', 'month', 'quarter', 'year'
+  const [viewType, setViewType] = useState('spending'); // 'spending', 'frequency'
+  const [sortBy, setSortBy] = useState('amount'); // 'amount', 'count', 'average'
+  const [timeframe, setTimeframe] = useState('all'); // 'all', 'month', 'quarter'
   const [showOnlyExpenses, setShowOnlyExpenses] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPeriod, setSelectedPeriod] = useState('current'); // 'current', 'previous', 'comparison'
 
-  // Enhanced category statistics with time filtering
+  // Simplified category statistics calculation
   const categoryStats = useMemo(() => {
     const stats = {};
     
@@ -44,8 +35,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
         case 'quarter':
           cutoffDate.setMonth(now.getMonth() - 3);
           break;
-        case 'year':
-          cutoffDate.setFullYear(now.getFullYear() - 1);
+        default:
           break;
       }
       filteredTransactions = transactions.filter(t => new Date(t.date) >= cutoffDate);
@@ -65,14 +55,8 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
         totalAmount: 0,
         transactionCount: 0,
         averageAmount: 0,
-        incomeAmount: 0,
         expenseAmount: 0,
-        transactions: [],
-        monthlyData: {},
-        weeklyData: {},
-        trend: 0,
-        volatility: 0,
-        frequency: 0
+        percentageOfTotal: 0
       };
     });
     
@@ -84,42 +68,14 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
       if (!category) return;
       
       const amount = parseFloat(transaction.amount);
-      const isIncome = transaction.type === 'income';
-      const date = new Date(transaction.date);
-      const month = date.toISOString().slice(0, 7); // YYYY-MM
-      const week = `${date.getFullYear()}-W${Math.ceil(date.getDate() / 7)}`;
       
       // Update totals
       stats[categoryId].totalAmount += amount;
       stats[categoryId].transactionCount += 1;
-      stats[categoryId].transactions.push(transaction);
-      
-      if (isIncome) {
-        stats[categoryId].incomeAmount += amount;
-      } else {
-        stats[categoryId].expenseAmount += amount;
-      }
-      
-      // Monthly data for trends
-      if (!stats[categoryId].monthlyData[month]) {
-        stats[categoryId].monthlyData[month] = {
-          month,
-          amount: 0,
-          count: 0
-        };
-      }
-      stats[categoryId].monthlyData[month].amount += amount;
-      stats[categoryId].monthlyData[month].count += 1;
-      
-      // Weekly data
-      if (!stats[categoryId].weeklyData[week]) {
-        stats[categoryId].weeklyData[week] = { amount: 0, count: 0 };
-      }
-      stats[categoryId].weeklyData[week].amount += amount;
-      stats[categoryId].weeklyData[week].count += 1;
+      stats[categoryId].expenseAmount += amount;
     });
     
-    // Calculate enhanced metrics
+    // Calculate basic metrics
     const totalSpending = Object.values(stats).reduce((sum, cat) => sum + cat.expenseAmount, 0);
     
     Object.values(stats).forEach(category => {
@@ -129,26 +85,6 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
       category.percentageOfTotal = totalSpending > 0 
         ? (category.expenseAmount / totalSpending) * 100 
         : 0;
-      category.monthlyTrend = Object.values(category.monthlyData).sort((a, b) => a.month.localeCompare(b.month));
-      
-      // Calculate trend (last 3 months vs previous 3 months)
-      const recentMonths = category.monthlyTrend.slice(-3);
-      const previousMonths = category.monthlyTrend.slice(-6, -3);
-      const recentTotal = recentMonths.reduce((sum, m) => sum + m.amount, 0);
-      const previousTotal = previousMonths.reduce((sum, m) => sum + m.amount, 0);
-      category.trend = previousTotal > 0 ? ((recentTotal - previousTotal) / previousTotal) * 100 : 0;
-      
-      // Calculate volatility (standard deviation of monthly amounts)
-      if (category.monthlyTrend.length > 1) {
-        const amounts = category.monthlyTrend.map(m => m.amount);
-        const mean = amounts.reduce((sum, a) => sum + a, 0) / amounts.length;
-        const variance = amounts.reduce((sum, a) => sum + Math.pow(a - mean, 2), 0) / amounts.length;
-        category.volatility = Math.sqrt(variance);
-      }
-      
-      // Calculate frequency (transactions per week)
-      const weeks = Object.values(category.weeklyData);
-      category.frequency = weeks.length > 0 ? category.transactionCount / weeks.length : 0;
     });
     
     return Object.values(stats)
@@ -160,12 +96,6 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
             return b.transactionCount - a.transactionCount;
           case 'average':
             return b.averageAmount - a.averageAmount;
-          case 'trend':
-            return b.trend - a.trend;
-          case 'volatility':
-            return b.volatility - a.volatility;
-          case 'frequency':
-            return b.frequency - a.frequency;
           default:
             return b.expenseAmount - a.expenseAmount;
         }
@@ -178,7 +108,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
     return categoryStats.filter(cat => selectedCategories.includes(cat.id));
   }, [categoryStats, selectedCategories]);
 
-  // Enhanced chart data preparation
+  // Simplified chart data preparation
   const chartData = useMemo(() => {
     switch (viewType) {
       case 'frequency':
@@ -186,32 +116,6 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
           name: cat.name,
           value: cat.transactionCount,
           color: cat.color,
-          average: cat.averageAmount
-        }));
-      case 'trends':
-        // Prepare monthly trend data for line chart
-        const months = [...new Set(transactions.map(t => 
-          new Date(t.date).toISOString().slice(0, 7)
-        ))].sort();
-        
-        return months.map(month => {
-          const monthData = { 
-            month,
-            formattedMonth: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-          };
-          filteredStats.forEach(cat => {
-            const monthlyAmount = cat.monthlyData[month]?.amount || 0;
-            monthData[cat.name] = monthlyAmount;
-          });
-          return monthData;
-        });
-      case 'treemap':
-        // Treemap data for hierarchical view
-        return filteredStats.map(cat => ({
-          name: cat.name,
-          size: cat.expenseAmount,
-          color: cat.color,
-          count: cat.transactionCount,
           average: cat.averageAmount
         }));
       default: // spending
@@ -223,16 +127,15 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
           percentage: cat.percentageOfTotal
         }));
     }
-  }, [viewType, filteredStats, transactions]);
+  }, [viewType, filteredStats]);
 
-  // Category comparison insights
+  // Simplified insights calculation
   const insights = useMemo(() => {
     if (categoryStats.length === 0) return [];
     
     const insights = [];
     const topCategory = categoryStats[0];
-    const totalCategories = categoryStats.length;
-    const avgSpendingPerCategory = categoryStats.reduce((sum, cat) => sum + cat.expenseAmount, 0) / totalCategories;
+    const totalSpending = categoryStats.reduce((sum, cat) => sum + cat.expenseAmount, 0);
     
     // Top spending category
     insights.push({
@@ -255,15 +158,17 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
       });
     }
     
-    // Highest average transaction
-    const highestAvg = [...categoryStats].sort((a, b) => b.averageAmount - a.averageAmount)[0];
-    insights.push({
-      type: 'average',
-      title: 'Highest Average',
-      description: `${highestAvg.name} averages ${formatCurrency(highestAvg.averageAmount)} per transaction`,
-      value: formatCurrency(highestAvg.averageAmount),
-      color: highestAvg.color
-    });
+    // Average spending insight
+    const avgSpending = totalSpending / categoryStats.length;
+    if (avgSpending > 0) {
+      insights.push({
+        type: 'average',
+        title: 'Average Category Spending',
+        description: `Average spending per category is ${formatCurrency(avgSpending)}`,
+        value: formatCurrency(avgSpending),
+        color: '#64748b'
+      });
+    }
     
     return insights;
   }, [categoryStats]);
@@ -301,9 +206,7 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
             <div className="flex bg-slate-800 rounded-lg p-1 flex-1">
               {[
                 { id: 'spending', label: 'Spending', icon: '💰' },
-                { id: 'frequency', label: 'Frequency', icon: '📊' },
-                { id: 'trends', label: 'Trends', icon: '📈' },
-                { id: 'treemap', label: 'Tree', icon: '🌳' }
+                { id: 'frequency', label: 'Frequency', icon: '📊' }
               ].map(mode => (
                 <button
                   key={mode.id}
@@ -377,9 +280,6 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
               <option value="amount">Amount</option>
               <option value="count">Count</option>
               <option value="average">Average</option>
-              <option value="trend">Trend</option>
-              <option value="volatility">Volatility</option>
-              <option value="frequency">Frequency</option>
             </select>
           </div>
           
@@ -445,135 +345,46 @@ function CategoryAnalysis({ transactions, categories, dateRange, selectedCategor
         {chartData.length > 0 ? (
           <div className="h-96">
             <ResponsiveContainer width="100%" height="100%">
-              {viewType === 'trends' ? (
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis 
-                    dataKey="formattedMonth" 
-                    stroke="#64748b"
-                    fontSize={12}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickFormatter={(value) => formatCurrency(value, true)}
-                  />
-                  <Tooltip
-                    formatter={(value, name) => [formatCurrency(value), name]}
-                    labelFormatter={(label) => `Period: ${label}`}
-                    contentStyle={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#f1f5f9'
-                    }}
-                  />
-                  {filteredStats.slice(0, 6).map((category, index) => (
-                    <Line
-                      key={category.id}
-                      type="monotone"
-                      dataKey={category.name}
-                      stroke={category.color}
-                      strokeWidth={selectedCategories.includes(category.id) ? 3 : 2}
-                      dot={{ fill: category.color, strokeWidth: 2, r: selectedCategories.includes(category.id) ? 5 : 3 }}
-                      opacity={selectedCategories.length === 0 || selectedCategories.includes(category.id) ? 1 : 0.3}
-                    />
-                  ))}
-                </LineChart>
-              ) : viewType === 'treemap' ? (
-                <Treemap
-                  data={chartData}
-                  dataKey="size"
-                  aspectRatio={4/3}
-                  stroke="#334155"
-                  fill="#8884d8"
-                  content={({ root, depth, x, y, width, height, index, payload, colors, rank, name }) => {
-                    return (
-                      <g>
-                        <rect
-                          x={x}
-                          y={y}
-                          width={width}
-                          height={height}
-                          style={{
-                            fill: payload.color,
-                            stroke: '#334155',
-                            strokeWidth: 2,
-                            fillOpacity: 0.8
-                          }}
-                        />
-                        {width > 60 && height > 30 && (
-                          <text
-                            x={x + width / 2}
-                            y={y + height / 2}
-                            textAnchor="middle"
-                            fill="white"
-                            fontSize={Math.min(width / 8, height / 4, 14)}
-                            fontWeight="bold"
-                          >
-                            {name}
-                          </text>
-                        )}
-                        {width > 80 && height > 50 && (
-                          <text
-                            x={x + width / 2}
-                            y={y + height / 2 + 16}
-                            textAnchor="middle"
-                            fill="white"
-                            fontSize={Math.min(width / 12, height / 6, 10)}
-                            opacity={0.8}
-                          >
-                            {formatCurrency(payload.size, true)}
-                          </text>
-                        )}
-                      </g>
-                    );
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#64748b"
+                  fontSize={12}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                />
+                <YAxis 
+                  stroke="#64748b"
+                  fontSize={12}
+                  tickFormatter={(value) => 
+                    viewType === 'frequency' ? value.toString() : formatCurrency(value, true)
+                  }
+                />
+                <Tooltip
+                  formatter={(value) => [
+                    viewType === 'frequency' ? `${value} transactions` : formatCurrency(value),
+                    viewType === 'frequency' ? 'Count' : 'Amount'
+                  ]}
+                  contentStyle={{
+                    backgroundColor: '#1e293b',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: '#f1f5f9'
                   }}
                 />
-              ) : (
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="#64748b"
-                    fontSize={12}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickFormatter={(value) => 
-                      viewType === 'frequency' ? value.toString() : formatCurrency(value, true)
-                    }
-                  />
-                  <Tooltip
-                    formatter={(value) => [
-                      viewType === 'frequency' ? `${value} transactions` : formatCurrency(value),
-                      viewType === 'frequency' ? 'Count' : 'Amount'
-                    ]}
-                    contentStyle={{
-                      backgroundColor: '#1e293b',
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#f1f5f9'
-                    }}
-                  />
-                  <Bar 
-                    dataKey="value" 
-                    fill={(entry) => entry.color}
-                    radius={[4, 4, 0, 0]}
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              )}
+                <Bar 
+                  dataKey="value" 
+                  fill={(entry) => entry.color}
+                  radius={[4, 4, 0, 0]}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+
             </ResponsiveContainer>
           </div>
         ) : (

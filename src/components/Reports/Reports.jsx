@@ -236,7 +236,13 @@ function Reports() {
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-purple-400">
-                    {Math.ceil((dateRange.end - dateRange.start) / (1000 * 60 * 60 * 24))}
+                    {(() => {
+                      if (filteredTransactions.length === 0) return 0;
+                      const transactionDates = filteredTransactions.map(t => new Date(t.date));
+                      const earliestDate = new Date(Math.min(...transactionDates));
+                      const latestDate = new Date(Math.max(...transactionDates));
+                      return Math.ceil((latestDate - earliestDate) / (1000 * 60 * 60 * 24)) + 1;
+                    })()} 
                   </div>
                   <div className="text-xs text-slate-400">Days</div>
                 </div>
