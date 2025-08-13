@@ -397,7 +397,7 @@ function ReportsDashboard({ transactions, categories, dateRange, viewMode = 'det
           
           {/* Tooltip */}
           {showHealthTooltip && (
-            <div className="absolute top-12 left-0 w-80 bg-slate-800 border border-slate-600 rounded-lg p-4 shadow-xl z-[9999] text-sm">
+            <div className="absolute top-12 left-0 w-80 bg-slate-800 border border-slate-600 rounded-lg p-4 shadow-xl text-sm">
               <h4 className="text-white font-semibold mb-3">How Financial Health is Calculated</h4>
               <div className="space-y-2 text-slate-300">
                 <div className="flex justify-between">
